@@ -177,6 +177,16 @@ def inspect(root: Path = ROOT, kernarium: Path | None = None) -> dict:
         and 'registerOnSharedPreferenceChangeListener(themeObserver)' in native_panel,
         'Source-only host-to-guest RGB transport and persisted readback; actual Android 17 compilation and runtime integration still required')
     grid_logic = (root / 'launcher_src/java/dev/twoyi/redlauncher/DashboardGridPolicy.java').read_text()
+    host_accent_state = (root / 'host/RedHostAccentState.swift').read_text()
+    host_clipboard_controls = (root / 'host/RedClipboardControls.swift').read_text()
+    add('Host clipboard chrome tracks verified Nexaris theme RGB',
+        'RedHostAccentState.shared.acceptVerified(rgb)' in make
+        and 'RedGuestAccentTransport.verifyRead(' in make
+        and 'RedHostAccentState.swift' in make
+        and '@ObservedObject private var accentState' in host_clipboard_controls
+        and '.foregroundStyle(accentState.color)' in host_clipboard_controls
+        and 'guard selected <= 0x00FF_FFFF' in host_accent_state,
+        'Host-side source wired to confirmed guest RGB; live iOS SwiftUI rendering untested')
     add('Native Android HOME grid adapts to narrow viewports',
         'DashboardGridPolicy.columns(available, dp(80))' in native_home
         and 'DashboardGridPolicy.cellWidth(available, dp(80))' in native_home
