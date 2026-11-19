@@ -140,12 +140,10 @@ def patch_resolution(s: str) -> str:
     s = once(s, "        let end = choices.end(at: model.resolutionIndex)\n",
              """        let end = model.redResolutionSetting.mode == .scaled
             ? choices.end(at: model.resolutionIndex) : nil
-        let modeName: String
-        switch model.redResolutionSetting.mode {
-        case .andd: modeName = "ANDD"
-        case .custom: modeName = "Custom"
-        case .scaled: modeName = "Scaled"
-        }
+        // SwiftUI ViewBuilder treats switches as view-producing branches.
+        // Use a single value declaration; these are labels, not views.
+        let modeName = model.redResolutionSetting.mode == .andd ? "ANDD" :
+                       model.redResolutionSetting.mode == .custom ? "Custom" : "Scaled"
 """, RESOLUTION)
     s = once(s, """            subtitle: ResolutionWords.summary(layout: layout, end: end),
             spoken: ResolutionWords.spokenSummary(layout: layout, end: end),""",
