@@ -20,7 +20,7 @@ bash scripts/first_build.sh /absolute/path/to/Kernarium --preview
 bash scripts/first_build.sh /absolute/path/to/Kernarium --build --with-apps --guest-proof /absolute/path/to/Android17-proof-release
 ```
 
-The unsigned proof image is **an input, not a byproduct of these scripts**. It must first be built on an appropriately configured x86_64 Linux Android build machine. A Mac/Xcode host compilation and signed iPhone tests remain pending. No GitHub Actions are used.
+The unsigned proof image is **an input, not a byproduct of the iOS build script**. It must first be built on an appropriately configured x86_64 Linux Android builder, then packaged with **[tools/create_unsigned_proof.py](tools/create_unsigned_proof.py)** from real compiled Android target-files and a checksummed assembled system disk. See the exact [Android 17 build/proof handoff](docs/ANDROID17_PROOF_BUILD.md). A Mac/Xcode host compilation and signed iPhone tests remain pending. No GitHub Actions are used.
 
 [Detailed v15.1 readiness and blockers](docs/FIRST_BUILD_STATUS_v15.md).
 
