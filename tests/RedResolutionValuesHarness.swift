@@ -9,7 +9,7 @@ import Foundation
 
     static func assert(_ condition: @autoclosure () -> Bool, _ label: String) {
         guard condition() else {
-            fputs("FAIL: \(label)\n", stderr)
+            print("FAIL: \(label)")
             exit(1)
         }
         passed += 1
