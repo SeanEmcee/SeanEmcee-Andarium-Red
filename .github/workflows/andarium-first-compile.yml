@@ -8,6 +8,7 @@ on:
     branches: [feature/andd-memory-tuning]
     paths:
       - 'build-requests/preview-*.txt'
+      - 'build-requests/host-*.txt'
   workflow_dispatch:
     inputs:
       phase:
@@ -79,7 +80,7 @@ jobs:
             tee .build/ci/source-gate.log
 
       - name: Compile AndariumPreview with Xcode 27
-        if: github.event_name == 'push' || inputs.phase == 'preview'
+        if: inputs.phase == 'preview' || (github.event_name == 'push' && !contains(github.event.head_commit.message, '[host-unsigned]'))
         shell: bash
         run: |
           set -euo pipefail
@@ -92,7 +93,7 @@ jobs:
             tee "$GITHUB_WORKSPACE/.build/ci/preview-xcodebuild.log"
 
       - name: Attempt unsigned Andarium host compilation
-        if: inputs.phase == 'host-unsigned'
+        if: inputs.phase == 'host-unsigned' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
         shell: bash
         run: |
           set -euo pipefail
@@ -104,7 +105,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: andarium-first-compile-${{ inputs.phase || 'preview' }}-${{ github.sha }}
+          name: andarium-first-compile-${{ inputs.phase || (contains(github.event.head_commit.message, '[host-unsigned]') && 'host-unsigned' || 'preview') }}-${{ github.sha }}
           path: |
             .build/ci/*.txt
             .build/ci/*.log
