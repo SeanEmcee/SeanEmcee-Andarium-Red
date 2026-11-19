@@ -163,6 +163,19 @@ def inspect(root: Path = ROOT, kernarium: Path | None = None) -> dict:
         and 'RedAccentStore.load(this)' in native_panel
         and 'RedAccentStore.acceptLaunchAccent(this, getIntent())' in launcher,
         'Guest remembers 24-bit RGB sent on launch; Nexaris host-to-guest runtime adapter still needs actual integration')
+    theme_provider = (root / 'launcher_src/java/dev/twoyi/redlauncher/RedThemeProvider.java').read_text()
+    theme_host = (root / 'host/RedGuestAccentTransport.swift').read_text()
+    add('Shell-only non-disruptive native Android RGB theme bridge with readback',
+        'android.permission.DUMP' in manifest
+        and 'Binder.getCallingUid()' in theme_provider
+        and 'Process.SHELL_UID' in theme_provider
+        and 'RedAccentStore.acceptRGB' in theme_provider
+        and 'editor.putInt(KEY, color).commit()' in accent_source
+        and 'RedGuestAccentTransport.verifyRead(' in make
+        and 'static func verifyRead(' in theme_host
+        and 'registerOnSharedPreferenceChangeListener(themeObserver)' in launcher
+        and 'registerOnSharedPreferenceChangeListener(themeObserver)' in native_panel,
+        'Source-only host-to-guest RGB transport and persisted readback; actual Android 17 compilation and runtime integration still required')
     add('Explicit clipboard signature permission check',
         'def clipboard_privilege(' in live_check
         and 'READ_CLIPBOARD_IN_BACKGROUND' in live_check,
