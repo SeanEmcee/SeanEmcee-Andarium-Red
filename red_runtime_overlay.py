@@ -61,7 +61,7 @@ def patch_core(s: str) -> str:
 
 def patch_display(s: str) -> str:
     s = once(s, "    let scale: GuestDisplayScale\n    /// What VoiceOver",
-             "    let scale: GuestDisplayScale\n    var redPixelOverride: CGSize?\n    /// What VoiceOver", DISPLAY_VIEW)
+             "    let scale: GuestDisplayScale\n    var redPixelOverride: CGSize? = nil\n    /// What VoiceOver", DISPLAY_VIEW)
     anchor = "        view.scale = scale\n"
     if "        view.redPixelOverride = redPixelOverride\n" not in s:
         if s.count(anchor) != 2:
