@@ -27,6 +27,11 @@ bundle="$("$plisttool" -c 'Print :CFBundleIdentifier' "$plist")"
 executable="$("$plisttool" -c 'Print :CFBundleExecutable' "$plist")"
 platform="$("$plisttool" -c 'Print :CFBundleSupportedPlatforms:0' "$plist")"
 version="$("$plisttool" -c 'Print :MinimumOSVersion' "$plist")"
+display="$("$plisttool" -c 'Print :CFBundleDisplayName' "$plist")"
+if [[ "$bundle" != dev.andarium.red || "$display" != "Andarium Red" ]]; then
+  echo "ERROR: the app has upstream/unknown branding (bundle=$bundle, name=$display), not modified Andarium Red" >&2
+  exit 1
+fi
 if [[ -z "$bundle" || -z "$executable" || "$platform" != iPhoneOS ]]; then
   echo "ERROR: not a real iPhoneOS app: $bundle / $platform" >&2
   exit 1
