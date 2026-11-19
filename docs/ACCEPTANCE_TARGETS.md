@@ -22,6 +22,17 @@ Do **not** interpret a green source check as 100% functional parity. Each target
 | 9 | Persistent Android guest and one-tap access; survive relaunch and more than seven days | Reboot, app update, container and signing-expiry tests with preserved guest app data | NOT VERIFIED |
 | 10 | Authorized signed IPA, LiveContainer compatibility and device testing | Signed iOS archive and iPhone 14 Pro Max on iOS 27.3 running guest with real diagnostics | NOT VERIFIED |
 
+## What v17 changes (source only)
+
+- A responsive Android-native HOME grid now adapts from one to four columns; the layout arithmetic compiled and passed 2,006 local assertions. Full Android UI pixel matching remains unverified.
+- The Android browser panel retains a partially entered URL during accent changes.
+- The iOS clipboard icon/border follow an accent confirmed by Android rather than staying permanently crimson.
+- The pre-build gate now returns a failing exit status for any missing source requirement, even while the release gate correctly remains NO-GO.
+- An opt-in two-stage guest persistence marker supports post-boot and post-update verification but has not yet been run against a device.
+- Nexaris marks **source-implemented** interface areas green, while missing runtime integration and unbooted Android remain visibly unverified.
+
+**No completion claim** is made for any of the original five or five added functional targets until independent Android/iPhone acceptance passes.
+
 ## What v16 changes (source only)
 
 - The Android launcher now has a package-local, shell-authorized RGB ContentProvider, requiring the `DUMP` permission and checking the calling UID; 24-bit colors are durably saved before responding.
