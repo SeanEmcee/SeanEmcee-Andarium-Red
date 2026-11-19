@@ -1,0 +1,3 @@
+Public Xcode 27 Andarium preview retry #3
+Fixes: synthetic fixture misclassification; Swift CGSize implicit Int conversion; more failure diagnostics.
+Target: first-build source gate then unsigned native preview.
