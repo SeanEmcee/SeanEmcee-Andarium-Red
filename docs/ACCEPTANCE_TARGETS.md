@@ -22,6 +22,19 @@ Do **not** interpret a green source check as 100% functional parity. Each target
 | 9 | Persistent Android guest and one-tap access; survive relaunch and more than seven days | Reboot, app update, container and signing-expiry tests with preserved guest app data | NOT VERIFIED |
 | 10 | Authorized signed IPA, LiveContainer compatibility and device testing | Signed iOS archive and iPhone 14 Pro Max on iOS 27.3 running guest with real diagnostics | NOT VERIFIED |
 
+## Target 11: Android guest → native Nexaris host app handoff (v17)
+
+| Requirement | Source implementation | Remaining acceptance |
+|---|---|---|
+| Android Home shortcuts to **Nexaris**, **URL OS**, **Rap Box**, **Rap Keys**, **Settings**, beside native Android apps | Five interactive launcher controls in native and reference-style HOME; no IPA copying | Rebuild Android 17 image, boot it and tap each launcher |
+| Native host app opens, not an Android IPA or an external app switch | Fixed allowlist, authenticated ADB shell mailbox, strict native parser and existing Nexaris in-process route APIs | Link/register the actual Andarium engine inside the Nexaris process and verify native app navigation |
+| Android fades to native Nexaris shell | Real UIKit guest view over actual native host TabView, 0.26 s alpha transition | Physical iPhone frame-by-frame capture; prove no black flash/window duplication |
+| Nexaris returns to My Device or previous native tab | Saved host preference, navigation reset, app-specific dispatch | Device test both modes and repeated Android→host→Android cycles |
+| No untrusted guest shell/URL execution and no message loss | Own-app UID enqueue, shell-only read/ack, 120-second expiry, strict IDs, single-message retry | Android 17 permission behavior, session isolation, interrupted/delayed ADB tests |
+| Build readiness | 45 Java route / 25 Swift host route / 17 Android-shaped provider policy checks passed on exact GitHub sources | Android SDK/Soong + Xcode compilation, actual guest image and signed IPA |
+
+**Target 11 source state: IMPLEMENTED AND CONFIGURABLE; runtime state: NOT YET VERIFIED.** A compiled Andarium engine and Nexaris runtime driver are still prerequisites. See [design and wire contract](ANDROID_HOST_HANDOFF_v17.md).
+
 ## What v14 changes
 
 - Implements persistent 24-bit RGB guest color input via `dev.twoyi.redlauncher.NEXARIS_ACCENT_RGB` launch extra, honoring the selected accent in the native home and native panel UIs. It does not automatically provide a transport between iOS and Android.
