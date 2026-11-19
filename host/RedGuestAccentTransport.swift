@@ -37,7 +37,12 @@ enum RedGuestAccentTransport {
             lower.contains("permission denial") || lower.contains("does not exist") {
             throw AccentError.guestRejected
         }
-        // An empty stdout is possible under altered host transports; success
-        // must be established by a real Android UI/device acceptance test.
+        // Avoid mistaking empty/noisy shell output for a confirmed launch.
+        // Android may report either a new Activity start or a delivered intent
+        // to an existing top-most Activity. Both require device acceptance
+        // before claiming pixels actually changed.
+        let acceptedStart = output.contains("Starting: Intent")
+        let delivered = output.contains("Warning: Activity not started, intent has been delivered")
+        guard acceptedStart || delivered else { throw AccentError.guestRejected }
     }
 }
