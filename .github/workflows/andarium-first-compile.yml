@@ -167,7 +167,7 @@ jobs:
             # Unlike host-unsigned, this mode MUST embed the verified compiled
             # Red guest. No substitution with upstream's accepted guest.
             bash scripts/first_build.sh "$PWD/.build/Kernarium" \
-              --build --guest-proof "$PWD/.build/red-proof" 2>&1 |
+              --build --with-apps --guest-proof "$PWD/.build/red-proof" 2>&1 |
               tee .build/ci/host-xcodebuild.log
           else
             echo "Compiler smoke only: upstream accepted guest is NOT modified Red Android."
