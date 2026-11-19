@@ -212,7 +212,12 @@ def patch_prefs(s: str) -> str:
         if model.launchScale == nil {
             RedResolutionStore.save(model.redResolutionSetting, to: defaults)
         }"""
-    return once(s, old, new, PREFERENCES)
+    s = once(s, old, new, PREFERENCES)
+    s = once(s,
+             "            _ = (model.displayOptionsToKeep, model.showStatsToKeep, model.pointerAsTouchToKeep, model.heatLimitToKeep)",
+             "            _ = (model.displayOptionsToKeep, model.redResolutionSetting, model.showStatsToKeep, model.pointerAsTouchToKeep, model.heatLimitToKeep)",
+             PREFERENCES)
+    return s
 
 
 def patch_guest_layer(s: str) -> str:
