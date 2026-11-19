@@ -397,7 +397,7 @@ public final class MainActivity extends Activity {
 
     private boolean packageInstalled(String name) {
         try { getPackageManager().getPackageInfo(name, 0); return true; }
-        catch (PackageManager.NameNotFoundException notInstalled) { return false; }
+        catch (PackageManager.NameNotFoundException | SecurityException notInstalled) { return false; }
     }
 
     void openRedAppDrawer() { showAppDrawer(""); }
