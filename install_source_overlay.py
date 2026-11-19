@@ -384,7 +384,7 @@ def apply(root: Path, source: Path, magisk_apk: Path | None, dry_run: bool,
         for target, content in host_patch.items():
             target.write_text(content)
         host_dest = root / 'Andarium/Andarium/Live'
-        for fname in ('RedClipboardCodec.swift', 'RedClipboardControls.swift'):
+        for fname in ('RedClipboardCodec.swift', 'RedClipboardControls.swift', 'RedHostRouteRuntime.swift'):
             shutil.copy2(Path(__file__).resolve().parent / 'host' / fname, host_dest / fname)
     if t_report:
         tdir = dest / 'titanium'
