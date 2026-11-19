@@ -10,6 +10,12 @@
         android:authorities="dev.twoyi.redlauncher.host"
         android:exported="true"
         android:grantUriPermissions="false" />
+    <!-- ADB-shell-only host network route receipts; guest HOME reads the status.
+         This never grants direct access to the iPhone's Wi-Fi radio. -->
+    <provider android:name=".RedHostTransportProvider"
+        android:authorities="dev.twoyi.redlauncher.hostnetwork"
+        android:exported="true"
+        android:grantUriPermissions="false" />
     <activity android:name=".RedPanelActivity" android:exported="false" />
     <!-- Five genuine Android launcher identities, but NO Android IPA copies.
          Aliases dispatch to the same trusted host-only request provider. -->
