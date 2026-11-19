@@ -7,11 +7,15 @@ if (( $# != 1 )); then
   echo "Usage: bash scripts/prepare_kernarium_ios_dependencies.sh KERNARIUM_PATH" >&2
   exit 2
 fi
+source_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 checkout="$(cd "$1" && pwd)"
 test -f "$checkout/dependencies/manifest.tsv"
 test -f "$checkout/dependencies/build-apple-gpu.sh"
 test "$(uname -s)" = Darwin
 cd "$checkout"
+
+echo "Checking the exact Mesa ARM64/iOS cross-target architecture flags ..."
+python3 "$source_root/scripts/patch_kernarium_mesa_cross_endian.py" "$checkout"
 
 echo "Installing macOS build tools for pinned third-party dependencies ..."
 brew install ninja bison flex pkgconf autoconf automake libtool gettext gperf rsync
