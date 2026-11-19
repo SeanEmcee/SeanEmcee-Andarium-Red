@@ -117,23 +117,27 @@ android/lineage-24/build/build-aosp.sh \
   --aosp-source "$aosp" --out "$out" --kernel-artifact "$artifact" \
   --build-number "$number" --jobs "$jobs"
 
-# Find precisely one real Soong target-files archive. Stale/multiple outputs
-# need explicit investigation instead of silently choosing a random image.
-target_root="$out/target/product"
-if [[ ! -d "$target_root" ]]; then
-  echo "ERROR: Android Soong created no target/product directory" >&2
+# The reviewed Soong producer emits one canonical target-files archive.
+# Never accept stale or differently named output via a wildcard search.
+target="$out/target/product/lineage_andarium/obj/PACKAGING/target_files_intermediates/lineage_andarium-target_files.zip"
+if [[ ! -f "$target" || -L "$target" ]]; then
+  echo "ERROR: pinned Android17 product did not produce $target" >&2
   exit 1
 fi
-mapfile -d '' targets < <(
-  find "$target_root" -type f -path '*/obj/PACKAGING/target_files_intermediates/*' \
-    -name '*target_files*.zip' -print0
-)
-if (( ${#targets[@]} != 1 )); then
-  echo "ERROR: expected exactly one compiled Red target-files ZIP, got ${#targets[@]}" >&2
-  printf 'Candidate: %s\n' "${targets[@]}" >&2
+target_dir="${target%.zip}"
+if [[ ! -d "$target_dir" || -L "$target_dir" ]]; then
+  echo "ERROR: target-files IMAGES staging directory missing: $target_dir" >&2
   exit 1
 fi
-target="${targets[0]}"
+if (( diagnostic )); then
+  # Only an actual target-files su payload can support diagnostic guest root.
+  # This check does not claim a working su permission or Magisk daemon.
+  if ! unzip -Z1 "$target" | grep -Eq '^SYSTEM/(system/)?(xbin|bin)/su$'; then
+    echo "ERROR: userdebug target files contain no su binary" >&2
+    exit 1
+  fi
+  echo "DIAGNOSTIC_BUILD_CONTAINS_SU_BINARY (not boot-tested, not Magisk)"
+fi
 host_tools="$out/host/linux-x86/bin"
 for bin in mkbootfs mkbootimg; do
   if [[ ! -x "$host_tools/$bin" ]]; then
