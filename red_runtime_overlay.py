@@ -103,10 +103,24 @@ def patch_model(s: str) -> str:
     /// ANDD is default; a migrated explicit scale keeps the old mode.
     var redResolutionSetting = RedResolutionSetting()
     var redNativePixelSize: CGSize?
+    /// Physical nativeBounds is typically portrait-sized; line it up with
+    /// the visible window's orientation instead of stretching landscape.
+    var redNativeOrientedPixelSize: CGSize? {
+        guard let pixels = redNativePixelSize, pixels.width > 0, pixels.height > 0 else {
+            return nil
+        }
+        guard let points = displayPoints, points.width > 0, points.height > 0 else {
+            return pixels
+        }
+        if (pixels.width > pixels.height) != (points.width > points.height) {
+            return CGSize(width: pixels.height, height: pixels.width)
+        }
+        return pixels
+    }
     /// Nil selects the upstream scaled-resolution behavior.
     var redPixelSize: CGSize? {
         guard launchScale == nil else { return nil }
-        return redResolutionSetting.pixels(native: redNativePixelSize)
+        return redResolutionSetting.pixels(native: redNativeOrientedPixelSize)
     }
 """, MODEL)
     old = "    var resolutionLayout: GuestDisplayLayout? { resolutionLayout(at: resolutionIndex) }"
