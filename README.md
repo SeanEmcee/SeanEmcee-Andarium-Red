@@ -1,3 +1,37 @@
+## First cloud compile: Xcode 27 (manual, unsigned)
+
+A manual GitHub Actions workflow is now committed to **both `main` and
+`feature/andd-memory-tuning`**:
+
+- [Andarium first compile](.github/workflows/andarium-first-compile.yml)
+- **Select branch `feature/andd-memory-tuning`** for current v17 source.
+- **`source`** checks all reviewed iOS/Android source integrations.
+- **`preview`** (recommended first) also compiles the iOS settings preview
+  against a separately checked-out, pinned Kernarium revision, using the
+  GitHub-hosted standard `xcode-27` macOS runner.
+- **`host-unsigned`** also attempts the complete Andarium host runtime build.
+  Its upstream accepted image is **not** the custom Red Android 17 proof;
+  a custom guest image requires the separate Android Linux producer.
+- Each job uploads diagnostics even when compiler steps fail; **no signing
+  credentials, private Apple certificates, or GitHub Actions secrets** are needed.
+
+**The workflow is manual only**, so committing it cannot automatically use
+private-repository Actions minutes. Both Nexaris and Andarium Red are still
+private as verified on November 19, 2026. Unlimited standard GitHub-hosted
+runner minutes apply only after a repository becomes public. The verified
+Universal GitHub Bridge currently cannot change repository visibility, and
+publishing source requires a conscious review of repository contents/history.
+The workflow has **not** run, so no Xcode result, signed IPA, modified guest
+image, or Nexaris-embedded executable is asserted.
+
+**Independent first-build misconception:** We do **not** need to ship or sign a
+standalone Andarium app before embedding its engine in Nexaris. A preview/host
+compile is simply an incremental validation step. The final combined Nexaris
+build must embed the actual Kernarium runtime and rebuilt Android 17 image,
+register the live Nexaris driver, and be compiled/signed/tested independently.
+
+---
+
 # Andarium Red v17 — Android Home → native Nexaris host applications
 
 **Feature source committed:** The Android HOME now offers five native-host launch shortcuts: **Nexaris, URL OS, Rap Box, Rap Keys, Settings**. These are Android launch controls, not installed IPAs. They use a strict mailbox over the existing authenticated Android ADB bridge. Nexaris mounts the live Android surface above its native shell, then fades Android away to reveal the real native destination. Tapping Nexaris returns to My Device by default or to the previously selected tab if configured.
