@@ -26,7 +26,7 @@ import Foundation
         assert(setting.pixels(native: nil) == nil, "unknown native screen needs fallback")
         assert(setting.pixels(native: CGSize(width: 8192, height: 8192)) == nil,
                "unsupported EDID dimensions rejected")
-        assert(setting.pixels(native: CGSize(width: .infinity, height: 1080)) == nil,
+        assert(setting.pixels(native: CGSize(width: CGFloat.infinity, height: 1080)) == nil,
                "nonfinite physical screen dimensions rejected")
         assert(setting.pixels(native: CGSize(width: 4095, height: 4095)) != nil,
                "4095-pixel EDID boundary is admitted")
