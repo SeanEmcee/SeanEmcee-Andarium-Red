@@ -72,8 +72,20 @@ def inspection(kernarium: Path, *, source: Path = ROOT, require_artifacts: bool 
         f"found={revision or '(unavailable)'} expected={combined.REVIEWED_UPSTREAM}")
 
     add("Complete upstream host files", red.is_complete_checkout(kernarium))
+    staged_swift = kernarium / "Andarium/Andarium/Shared"
     for fname in red.ADD_SWIFT:
-        add(f"ANDD source {fname}", (source / "host" / fname).is_file())
+        source_file = source / "host" / fname
+        stage_file = staged_swift / fname
+        add(f"ANDD source {fname}", source_file.is_file())
+        add(f"ANDD staged source matches {fname}",
+            source_file.is_file() and stage_file.is_file() and
+            source_file.read_bytes() == stage_file.read_bytes(),
+            "Source integration must copy the exact file into the synchronized Xcode folder")
+    protocol = kernarium / "darwin/device/gpu/protocol.hpp"
+    display_policy = source / "host/RedDisplayChoice.swift"
+    add("Custom display matches Android EDID maximum",
+        protocol.is_file() and "maximumEdidDimension = 4095" in protocol.read_text() and
+        display_policy.is_file() and "maximumSide = 4095" in display_policy.read_text())
     if red.is_complete_checkout(kernarium):
         try:
             proposed = red.plan(kernarium, source)
