@@ -19,10 +19,12 @@ import Foundation
     static func main() throws {
         var setting = RedResolutionSetting()
         assert(setting.mode == .andd, "fresh installs default ANDD")
-        assert(setting.pixels(native: CGSize(width: 1290, height: 2796)) ==
-               CGSize(width: 1290, height: 2796), "native iPhone 14 Pro Max pixels")
-        assert(setting.pixels(native: CGSize(width: 2796, height: 1290)) ==
-               CGSize(width: 2796, height: 1290), "orientation-swapped native pixels")
+        assert(setting.pixels(native: CGSize(width: 1290, height: 2796))?.width == 1290 &&
+               setting.pixels(native: CGSize(width: 1290, height: 2796))?.height == 2796,
+               "native iPhone 14 Pro Max pixels")
+        assert(setting.pixels(native: CGSize(width: 2796, height: 1290))?.width == 2796 &&
+               setting.pixels(native: CGSize(width: 2796, height: 1290))?.height == 1290,
+               "orientation-swapped native pixels")
         assert(setting.pixels(native: nil) == nil, "unknown native screen needs fallback")
         assert(setting.pixels(native: CGSize(width: 8192, height: 8192)) == nil,
                "unsupported EDID dimensions rejected")
