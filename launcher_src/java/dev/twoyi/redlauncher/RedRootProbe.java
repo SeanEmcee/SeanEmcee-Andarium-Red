@@ -2,6 +2,7 @@
 package dev.twoyi.redlauncher;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
@@ -26,21 +27,51 @@ final class RedRootProbe {
     }
 
     private static final int OUTPUT_LIMIT = 1024;
+
+    /** Drain the pipe concurrently. Waiting for a child before consuming its
+     * output can deadlock when the child fills the OS stdout/stderr pipe. */
+    private static final class BoundedOutput implements Runnable {
+        private final InputStream input;
+        private final ByteArrayOutputStream data = new ByteArrayOutputStream();
+        private volatile boolean overLimit;
+        private volatile boolean failed;
+
+        BoundedOutput(InputStream input) { this.input = input; }
+
+        @Override public void run() {
+            try (InputStream stream = input) {
+                byte[] buffer = new byte[256];
+                int read;
+                while ((read = stream.read(buffer)) != -1) {
+                    int available = OUTPUT_LIMIT - data.size();
+                    if (read > available) overLimit = true;
+                    if (available > 0) data.write(buffer, 0, Math.min(read, available));
+                }
+            } catch (IOException e) {
+                failed = true;
+            }
+        }
+
+        String text() { return new String(data.toByteArray(), StandardCharsets.UTF_8); }
+    }
+
     static final Runner PROCESS_RUNNER = argv -> {
         Process process = new ProcessBuilder(argv).redirectErrorStream(true).start();
+        BoundedOutput captured = new BoundedOutput(process.getInputStream());
+        Thread reader = new Thread(captured, "andarium-root-probe-output");
+        reader.setDaemon(true);
+        reader.start();
         try {
             if (!process.waitFor(15, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
+                reader.join(1000);
                 return new CommandResult(-1, "timeout");
             }
-            try (InputStream stream = process.getInputStream(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
-                byte[] block = new byte[256];
-                int n;
-                while ((n = stream.read(block)) != -1 && out.size() <= OUTPUT_LIMIT) {
-                    out.write(block, 0, n);
-                }
-                return new CommandResult(process.exitValue(), out.toString(StandardCharsets.UTF_8.name()));
+            reader.join(1000);
+            if (reader.isAlive() || captured.failed || captured.overLimit) {
+                return new CommandResult(-2, "invalid or incomplete command output");
             }
+            return new CommandResult(process.exitValue(), captured.text());
         } finally {
             if (process.isAlive()) process.destroyForcibly();
         }
