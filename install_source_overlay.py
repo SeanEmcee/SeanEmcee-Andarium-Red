@@ -237,6 +237,7 @@ def patch_guest_accent_runtime(original: str) -> str:
             RedGuestAccentTransport.readCommand, limit: .seconds(15))
         try RedGuestAccentTransport.verifyRead(
             readback.text, exitCode: readback.exitCode, expectedRGB: rgb)
+        RedHostAccentState.shared.acceptVerified(rgb)
     }
 
 '''
@@ -413,7 +414,7 @@ def apply(root: Path, source: Path, magisk_apk: Path | None, dry_run: bool,
             target.write_text(content)
         host_dest = root / 'Andarium/Andarium/Live'
         for fname in ('RedClipboardCodec.swift', 'RedClipboardControls.swift',
-                      'RedGuestAccentTransport.swift'):
+                      'RedGuestAccentTransport.swift', 'RedHostAccentState.swift'):
             shutil.copy2(Path(__file__).resolve().parent / 'host' / fname, host_dest / fname)
     if t_report:
         tdir = dest / 'titanium'
