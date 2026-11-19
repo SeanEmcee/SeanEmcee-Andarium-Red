@@ -1,3 +1,25 @@
+# Andarium Red v18 — real embedding preparation and broken-check repair
+
+**Functional release gate: NO-GO.** No Android image, iOS IPA or real iPhone runtime has been built or validated in this source-only iteration.
+
+- Repaired the accidentally duplicated/corrupted `tools/verify_guest.py` source so each live-verifier function and CLI entrypoint appears once.
+- Repaired a literal escaped newline in the Java `SharedPreferences` mock which would have broken compilation.
+- Added `tools/python_syntax_gate.py`: syntax-checks every repository Python file and verifies required live-verifier methods and exactly one CLI entrypoint. This runs first in `tools/prebuild_validate_v16.py`.
+- Added `tools/prepare_embedded_kernarium.py`, an explicit opt-in, idempotent edit to the upstream Andarium `@main` app delegate. It keeps upstream `AndariumProcess` and the live `RootView` available for the combined Nexaris target.
+- The Nexaris feature branch adds a real type-referencing `AndariumProcess`/`AppModel`/`LiveRuntime` adapter, but compiles it only with `NEXARIS_EMBEDDED_ANDARIUM` after the genuine upstream engine is included. Android guest startup and Metal display are still untested.
+- A separate `Nexaris/project.andarium.yml` flavor specifies iOS 27.0, Xcode 27.2, source/package/framework inputs, an independent privacy plist, and a combined runtime bridging header. Normal Nexaris remains on its original project configuration.
+- No GitHub Actions jobs or app builds were executed.
+
+Offline prebuild check (source/tests only):
+
+```sh
+python3 tools/prebuild_validate_v16.py --report prebuild-v18-local.json
+```
+
+The runtime itself is still the decisive blocker. Passing this check does not make a guest image, accepted AOT artifact, root daemon, Google services integration, signed IPA, or verified 100% parity.
+
+---
+
 # Andarium Red v17 — pre-build hardening and acceptance tooling
 
 **Release still NO-GO:** Source-level improvements are committed and selective Java/Swift harnesses were exercised locally. No full Android image, iOS IPA, device boot, genuine Magisk root, native AOT benchmark, or 7-day persistence run exists yet.
