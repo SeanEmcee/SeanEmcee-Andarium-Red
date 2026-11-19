@@ -1,0 +1,51 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+"""The offline source checker can never certify an unbuilt Android runtime."""
+from contextlib import redirect_stdout
+from io import StringIO
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
+import prebuild_validate_v16 as validation
+
+
+class PrebuildValidatorTests(unittest.TestCase):
+    def test_command_roster_has_no_app_build_or_actions(self):
+        roster = validation.commands()
+        names = " ".join(name for name, _, _ in roster)
+        self.assertIn("Python regression suite", names)
+        self.assertIn("Android RGB provider permission behavior", names)
+        for _, argv, _ in roster:
+            self.assertNotIn("xcodebuild", argv)
+            self.assertNotIn("gradle", argv)
+            self.assertNotIn("gh", argv)
+            self.assertNotIn("swift build", " ".join(argv))
+
+    def test_green_source_tests_still_report_release_no_go(self):
+        with tempfile.TemporaryDirectory() as d, redirect_stdout(StringIO()):
+            dest = Path(d) / "source.json"
+            with patch.object(validation, "commands", return_value=[("fixture", ["true"], 5)]), \
+                 patch.object(validation.subprocess, "run", return_value=SimpleNamespace(
+                     returncode=0, stdout="pass", stderr="")):
+                self.assertEqual(validation.run(report=dest), 0)
+            report = json.loads(dest.read_text())
+            self.assertTrue(report["source_checks_passed"])
+            self.assertEqual(report["release_gate"], "NO-GO")
+            self.assertEqual(report["runtime_acceptance"], "UNVERIFIED")
+
+    def test_red_source_tests_fail_closed(self):
+        with redirect_stdout(StringIO()), \
+             patch.object(validation, "commands", return_value=[("fixture", ["false"], 5)]), \
+             patch.object(validation.subprocess, "run", return_value=SimpleNamespace(
+                 returncode=2, stdout="", stderr="failed")):
+            self.assertEqual(validation.run(), 1)
+
+
+if __name__ == "__main__":
+    unittest.main()
