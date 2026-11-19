@@ -1,3 +1,24 @@
+# Andarium Red v16 — non-disruptive Android theme handoff and offline pre-build gate
+
+**Release: NO-GO.** The private source branch now contains a local, shell-authorized Android theme provider with a Swift write-and-readback transport. This does not boot Android 17, connect the real Nexaris runtime adapter, establish Magisk root, or prove visual parity. No GitHub Actions, Android image build, or signed IPA build has been run.
+
+## Source improvements in v16
+
+- The native Android launcher includes an exported `RedThemeProvider` protected by Android's `DUMP` permission and a shell/root UID check. Only an authorized guest ADB command can call it; no network service or external listener is introduced.
+- Theme updates validate 24-bit RGB, commit the preference before acknowledging success, and provide an exact readback field. The iOS host now sends `content call` set/get commands instead of forcing the Android launcher into the foreground.
+- Native HOME and Settings/browser screens register change listeners while visible, update their color when the preference changes, and unregister on stop to avoid retaining dead screens.
+- The Swift protocol checker was compiled and exercised locally with **17 assertions**. An isolated Java provider implementation was stub-compiled and exercised locally; the complete repository's 15-assertion Java provider harness still requires running from a synced checkout.
+- `tools/prebuild_validate_v16.py` runs source tests, Java harnesses and source gates locally and writes a JSON report, while always leaving runtime release status **NO-GO**. It does not call GitHub Actions, Xcode or Gradle.
+- Nexaris's separate integration pull request serializes theme requests, coalesces fast changes, queues colors while Android is stopped, and replays them after a real guest boot. The actual runtime adapter remains unimplemented.
+
+```sh
+python3 tools/prebuild_validate_v16.py --report prebuild-v16-local.json
+```
+
+**Evidence caveat:** The bundled `PREBUILD_PARITY.json` and `RELEASE_STATUS.json` capture the previous **v14** baseline. Do not reuse their 139 Python passing-test count or 44/44 source-check number as a verified v16 full-suite result. A full Android 17 compilation, authenticated ADB integration, ROM boot, and iPhone acceptance remain required for actual functional parity.
+
+---
+
 # Andarium Red v15 — incremental source hardening (development branch)
 
 **Release: NO-GO.** This branch continues the v14 source handoff; it does **not** contain a completed Android image, Magisk-booted guest, working Nexaris Android runtime adapter, AOT acceptance measurement, or signed iOS app. Source changes are not a declaration of 100% functional parity. GitHub Actions and app builds have not been run.
