@@ -43,7 +43,7 @@ def patch_core(s: str) -> str:
     /// ANDD and custom resolutions use the same geometry in Home and runtime.
     public init?(pixelWidth: Int, pixelHeight: Int, points: CGSize) {
         guard pixelWidth > 0, pixelHeight > 0,
-              pixelWidth <= 8192, pixelHeight <= 8192,
+              pixelWidth <= 4095, pixelHeight <= 4095,
               pixelWidth <= 16_777_216 / pixelHeight,
               points.width.isFinite, points.height.isFinite,
               points.width > 0, points.height > 0 else { return nil }
