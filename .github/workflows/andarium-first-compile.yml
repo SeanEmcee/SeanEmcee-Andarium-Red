@@ -31,7 +31,7 @@ concurrency:
 jobs:
   first-compile:
     runs-on: xcode-27
-    timeout-minutes: 55
+    timeout-minutes: 180
     env:
       KERNARIUM_REVISION: fbe12ee72d195f0241c4fc24090a98b259026604
       ANDARIUM_UPSTREAM: https://github.com/imxieyi/Kernarium.git
@@ -91,6 +91,14 @@ jobs:
             -derivedDataPath "$GITHUB_WORKSPACE/.build/DerivedData" \
             CODE_SIGNING_ALLOWED=NO build 2>&1 |
             tee "$GITHUB_WORKSPACE/.build/ci/preview-xcodebuild.log"
+
+      - name: Build pinned Kernarium iOS GPU, networking and storage dependencies
+        if: inputs.phase == 'host-unsigned' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/prepare_kernarium_ios_dependencies.sh "$PWD/.build/Kernarium" 2>&1 |
+            tee .build/ci/ios-native-dependencies.log
 
       - name: Attempt unsigned Andarium host compilation
         if: inputs.phase == 'host-unsigned' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
