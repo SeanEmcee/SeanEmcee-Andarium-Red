@@ -1,3 +1,30 @@
+# Andarium Red v15 — First-build preparation
+
+**Branch:** feature/andd-memory-tuning — [draft PR #2](https://github.com/SeanEmcee/SeanEmcee-Andarium-Red/pull/2).
+
+**Pre-build state:** iOS source integration and first-build tooling are staged, but **no signed IPA, Android 17 image, Xcode compilation, or live iPhone benchmark has been certified**. Do not report runtime parity as complete.
+
+## v15 additions
+
+- **ANDD is the new default** on new installs, using physical dimensions from the scene's native display, adjusted to match its orientation. An iPhone 14 Pro Max reports 1290 × 2796 in portrait. Earlier explicit saved scaled modes remain selected when upgrading.
+- **Custom resolution:** numeric width/height, chain toggle that locks the chosen aspect ratio or allows either dimension to be edited independently. Validation rejects unsupported dimensions outside 256–4095 pixels per side, matching Kernarium's EDID guest path; exact valid pixels go through the guest display layout, Metal drawable and touchscreen geometry.
+- **Device memory profiles:** Max quality (within conservative RAM and GPU limits), Graphics priority (tested upstream default), High RAM (safe host line) and Device limit (runtime maximum with warning). Limits follow actual vCPU count, GPU reserve and process memory limits. No entitlement bypass or promised benchmark score.
+- **Reproducible first-build gate:** a pinned upstream Kernarium commit (fbe12ee72d195f0241c4fc24090a98b259026604), fail-closed source patches, Python regression suite and real portable Swift resolution tests. No GitHub Actions required.
+
+## First build, without GitHub Actions
+
+On a Mac with Xcode 27, and a checked-out Kernarium tree at the pinned commit:
+
+```sh
+./scripts/first_build.sh /absolute/path/to/Kernarium
+# Once the matching runtime and accepted Android system image are available:
+./scripts/first_build.sh /absolute/path/to/Kernarium --build
+```
+
+The optional --build command performs an **unsigned iOS compiler smoke build**, not an IPA installation or a Magisk-rooted guest test. A new Android 17 guest image must be built for the red native launcher and platform clipboard components; an existing upstream accepted image cannot demonstrate these changes. See [docs/ANDD_MEMORY_v15.md](docs/ANDD_MEMORY_v15.md) and [docs/REPOSITORY_AND_BUILD.md](docs/REPOSITORY_AND_BUILD.md).
+
+---
+
 # Andarium Red v14 — source continuation and Nexaris accent handoff
 
 **Release: NO-GO.** This is a complete source handoff built from the prior v13 package, not an Android image or installable IPA. No GitHub Actions, signing or iPhone build was used. [Original and expanded parity targets](docs/ACCEPTANCE_TARGETS.md) • [Private GitHub repository guidance](docs/REPOSITORY_AND_BUILD.md).
