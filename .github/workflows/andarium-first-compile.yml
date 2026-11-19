@@ -126,7 +126,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 scripts/verify_red_android17_guest.py \\
+          python3 scripts/verify_red_android17_guest.py \
             --proof .build/red-proof --kernarium .build/Kernarium 2>&1 |
             tee .build/ci/red-android17-proof.log
 
@@ -148,7 +148,7 @@ jobs:
           if [[ "$BUILD_PHASE" == red-ipa ]]; then
             # Unlike host-unsigned, this mode MUST embed the verified compiled
             # Red guest. No substitution with upstream's accepted guest.
-            bash scripts/first_build.sh "$PWD/.build/Kernarium" \\
+            bash scripts/first_build.sh "$PWD/.build/Kernarium" \
               --build --guest-proof "$PWD/.build/red-proof" 2>&1 |
               tee .build/ci/host-xcodebuild.log
           else
@@ -162,8 +162,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bash scripts/package_unsigned_ipa.sh \\
-            .build/Kernarium/.build/DerivedDataAndariumHost/Build/Products/Release-iphoneos/Andarium.app \\
+          bash scripts/package_unsigned_ipa.sh \
+            .build/Kernarium/.build/DerivedDataAndariumHost/Build/Products/Release-iphoneos/Andarium.app \
             .build/ipa "$PWD/.build/Kernarium"
 
       - name: Upload the real modified Andarium Red Android 17 unsigned IPA
