@@ -1,36 +1,43 @@
-## First cloud compile: Xcode 27 (manual, unsigned)
+## Build the modified Andarium Red app, not upstream Andarium
 
-A manual GitHub Actions workflow is now committed to **both `main` and
-`feature/andd-memory-tuning`**:
+The [public Andarium Red repository](https://github.com/SeanEmcee/SeanEmcee-Andarium-Red)
+is the source of **our modified app** on branch `feature/andd-memory-tuning`.
+Kernarium at the reviewed pinned revision is used as a base, then
+`integrate_andarium.py` applies the Android launcher/clipboard and native
+display, RAM and UI changes. Compiling the unchanged upstream app would
+**not** satisfy this project.
 
-- [Andarium first compile](.github/workflows/andarium-first-compile.yml)
-- **Select branch `feature/andd-memory-tuning`** for current v17 source.
-- **`source`** checks all reviewed iOS/Android source integrations.
-- **`preview`** (recommended first) also compiles the iOS settings preview
-  against a separately checked-out, pinned Kernarium revision, using the
-  GitHub-hosted standard `xcode-27` macOS runner.
-- **`host-unsigned`** also attempts the complete Andarium host runtime build.
-  Its upstream accepted image is **not** the custom Red Android 17 proof;
-  a custom guest image requires the separate Android Linux producer.
-- Each job uploads diagnostics even when compiler steps fail; **no signing
-  credentials, private Apple certificates, or GitHub Actions secrets** are needed.
+**Current verified compiler state (November 19, 2026):** the Xcode 27
+`AndariumPreview` simulator UI compiled successfully in
+[run #44635364654](https://github.com/SeanEmcee/SeanEmcee-Andarium-Red/actions/runs/44635364654).
+That preview is **NOT** an Android emulator and is **NOT** distributed as an IPA.
+The full host build in
+[run #44637111492](https://github.com/SeanEmcee/SeanEmcee-Andarium-Red/actions/runs/44637111492)
+built the pinned GPU/network dependencies but failed because a compatible,
+accepted Android 4 KiB **kernel artifact** was not installed on the runner.
+There is **no finished modified Red Android 17 boot image or installable IPA**.
 
-**The workflow is manual only**, so committing it cannot automatically use
-private-repository Actions minutes. Both Nexaris and Andarium Red are still
-private as verified on November 19, 2026. Unlimited standard GitHub-hosted
-runner minutes apply only after a repository becomes public. The verified
-Universal GitHub Bridge currently cannot change repository visibility, and
-publishing source requires a conscious review of repository contents/history.
-The workflow has **not** run, so no Xcode result, signed IPA, modified guest
-image, or Nexaris-embedded executable is asserted.
+The [Andarium build workflow](.github/workflows/andarium-first-compile.yml)
+has four modes:
 
-**Independent first-build misconception:** We do **not** need to ship or sign a
-standalone Andarium app before embedding its engine in Nexaris. A preview/host
-compile is simply an incremental validation step. The final combined Nexaris
-build must embed the actual Kernarium runtime and rebuilt Android 17 image,
-register the live Nexaris driver, and be compiled/signed/tested independently.
+- `source`: source integration and regression tests.
+- `preview`: simulation-only UI smoke, never packaged as an IPA.
+- `host-unsigned`: actual modified full-host compile smoke, but its
+  upstream accepted Android image is not our rebuilt Red guest and will not
+  be published as the Red IPA.
+- `red-ipa`: builds and packages **the full modified Andarium Red iPhoneOS
+  app** only after `guest_proof_run_id` identifies a compiled Red Android 17
+  proof artifact from this repository. The resulting unsigned IPA can be
+  imported into LiveContainer's certificate/signing process for testing;
+  iOS entitlements, JIT, memory and Android boot are still device-dependent.
 
----
+The actual Android 17 proof needs a separate large x86_64 Linux/Soong
+production run and accepted kernel artifact. Android 17 is bundled inside
+Andarium at build time; creating a guest in the app initializes its Android
+data disk. Installing arbitrary new ROMs later from inside the app would
+require a separately implemented importer. See
+[the LiveContainer/IPA gate](docs/LIVECONTAINER_RED_IPA.md) and
+[the Android 17 proof producer](docs/ANDROID17_PROOF_BUILD.md).
 
 # Andarium Red v17 — Android Home → native Nexaris host applications
 
