@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import re
 import shutil
@@ -89,7 +90,16 @@ def target_metadata(archive: zipfile.ZipFile) -> tuple[dict[str, str], dict[str,
                    if name.lower().endswith(".apk") and module.lower() in name.lower()]
         if not matched:
             raise ValueError(f"Target files do not include Android module {module}")
-        located[module] = sorted(matched)[0]
+        candidate = sorted(matched)[0]
+        # A filename alone proves nothing. Both Red modules must contain real
+        # Android APK archives with a manifest and DEX, not a placeholder ZIP.
+        with zipfile.ZipFile(io.BytesIO(archive.read(candidate))) as apk:
+            names = apk.namelist()
+            if ("AndroidManifest.xml" not in names or
+                    not any(name.endswith(".dex") for name in names) or
+                    apk.testzip() is not None):
+                raise ValueError(f"Compiled module {module} has invalid APK payload")
+        located[module] = candidate
     return android, located
 
 
