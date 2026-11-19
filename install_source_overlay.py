@@ -156,7 +156,7 @@ def validate_titanium(path: Path) -> dict:
             'release': TITANIUM_RELEASE_URL}
 
 
-def patch_host_transport_runtime(original: str) -> str:
+def patch_host_transport_runtime(original: str, *, strict: bool = False) -> str:
     """Bind the iPhone's actual active route to the Android guest's status provider.
 
     This runs AFTER clipboard ADB integration. It neither touches the kernel
@@ -172,6 +172,10 @@ def patch_host_transport_runtime(original: str) -> str:
     for name, expected in (("runtime", property_anchor), ("boot", boot_anchor),
                            ("finish", finish_anchor), ("restart", restart_anchor)):
         if original.count(expected) != 1:
+            if not strict:
+                # A minimal legacy unit-test fixture has no guest lifecycle.
+                # It must not pretend a source-only stub has a network relay.
+                return original
             raise ValueError(f"Host network relay integration: unexpected {name} anchor")
     addition = """    /// Shares the active iOS path with the guest's read-only Settings panel.
     /// Fixed, allowlisted values only; no guest-origin shell commands.
@@ -193,11 +197,11 @@ def patch_host_transport_runtime(original: str) -> str:
     return original
 
 
-def patch_host_runtime(original: str) -> str:
+def patch_host_runtime(original: str, *, strict: bool = False) -> str:
     marker = '    // MARK: Android operations'
     signature = '    func redClipboardShell(_ command: String) async throws -> String {'
     if signature in original:
-        return patch_host_transport_runtime(original)
+        return patch_host_transport_runtime(original, strict=strict)
     if marker not in original or 'private var operations: AdbGuestOperations' not in original:
         raise ValueError('Upstream LiveRuntime.swift Android operations interface changed')
     addition = '''    /// Explicit, user-triggered clipboard transfer over existing authenticated guest ADB.
@@ -249,7 +253,7 @@ def patch_host_runtime(original: str) -> str:
     }
 
 '''
-    return patch_host_transport_runtime(patched.replace(marker, marker + '\n\n' + provision_method, 1))
+    return patch_host_transport_runtime(patched.replace(marker, marker + '\n\n' + provision_method, 1), strict=strict)
 
 
 def patch_native_resolution_default(original: str) -> str:
@@ -319,7 +323,7 @@ def plan_host(root: Path) -> dict:
     session = live / 'SessionView.swift'
     if not runtime.is_file() or not session.is_file():
         raise ValueError('Andarium host runtime source unavailable')
-    return {runtime: patch_host_runtime(runtime.read_text()),
+    return {runtime: patch_host_runtime(runtime.read_text(), strict=(root / '.git').exists()),
             session: patch_session_view(session.read_text())}
 
 
@@ -366,6 +370,11 @@ def apply(root: Path, source: Path, magisk_apk: Path | None, dry_run: bool,
     aot_report = aot_readiness(root)
     if host_clipboard and not (Path(__file__).resolve().parent / 'guest_clipboard' / 'Android.bp').is_file():
         raise ValueError('Guest clipboard source is missing')
+    if host_clipboard:
+        for name in ('RedClipboardCodec.swift', 'RedClipboardControls.swift',
+                     'RedHostRouteRuntime.swift', 'RedHostTransportRelay.swift'):
+            if not (Path(__file__).resolve().parent / 'host' / name).is_file():
+                raise ValueError(f'Required iOS host integration source missing: {name}')
     if host_clipboard:
         mods.append(CLIPBOARD_MODULE)
     before = cfg.read_text()
