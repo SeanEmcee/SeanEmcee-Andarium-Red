@@ -48,7 +48,9 @@ def patch_core(s: str) -> str:
               points.width.isFinite, points.height.isFinite,
               points.width > 0, points.height > 0 else { return nil }
         let pixelsPerPoint = Double(pixelWidth) / Double(points.width)
-        guard pixelsPerPoint.isFinite, pixelsPerPoint > 0 else { return nil }
+        let dpi = pixelsPerPoint * baselineDotsPerInch
+        guard pixelsPerPoint.isFinite, pixelsPerPoint > 0,
+              dpi.isFinite, dpi >= 1, dpi < Double(UInt32.max) else { return nil }
         width = pixelWidth
         height = pixelHeight
         factor = pixelsPerPoint
