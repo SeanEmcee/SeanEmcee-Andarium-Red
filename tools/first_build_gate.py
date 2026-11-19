@@ -133,6 +133,21 @@ def inspection(kernarium: Path, *, source: Path = ROOT, require_artifacts: bool 
         good, info = run([sys.executable, "-m", "unittest", "discover",
                           "-s", "tests", "-q"], cwd=source, timeout=360)
         add("Andarium Red Python regression suite", good, info)
+        java_check = shutil.which("java") and shutil.which("javac")
+        add("Java JDK for Android source checks", bool(java_check),
+            "Both javac and java required for Android source tests")
+        if java_check:
+            for name, script in (
+                ("Android clipboard provider Java typecheck", "tools/java_compile_smoke.py"),
+                ("Android clipboard Java behavior", "tools/clipboard_provider_behavior_test.py"),
+                ("Native red Settings/browser Java typecheck", "tools/android_panel_stub_compile.py"),
+                ("Native red home Java typecheck", "tools/native_home_stub_compile.py"),
+                ("User-initiated Magisk root Java behavior", "tools/root_probe_java_test.py"),
+                ("Nexaris accent Java behavior", "tools/accent_store_behavior_test.py"),
+            ):
+                good, info = run([sys.executable, str(source / script)],
+                                 cwd=source, timeout=150)
+                add(name, good, info)
         swiftc = shutil.which("swiftc")
         add("Swift compiler for policy checks", swiftc is not None, swiftc or "swiftc not found")
         if swiftc is not None:
