@@ -131,5 +131,7 @@ echo "Attempting non-signed first Xcode compiler build..."
 xcodebuild -project Andarium/Andarium.xcodeproj -scheme Andarium \
   -configuration Release -destination 'generic/platform=iOS' \
   -derivedDataPath "${ANDARIUM_HOST_DERIVED_DATA_PATH:-$KERNARIUM/.build/DerivedDataAndariumHost}" \
+  'PRODUCT_BUNDLE_IDENTIFIER=dev.andarium.red' \
+  'INFOPLIST_KEY_CFBundleDisplayName=Andarium Red' \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
 echo "Unsigned compile completed. Signing, entitlements and device run are separate release gates."
