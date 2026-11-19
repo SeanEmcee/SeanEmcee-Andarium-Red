@@ -69,7 +69,7 @@ def inspect(folder: Path) -> dict:
     require(isinstance(system, dict) and layout.get("schema_version") == 2,
             "Invalid Andarium Android partition layout")
     actual_disk = folder / "guest/system.img"
-    require(system.get("size") == actual_disk.stat().st_size,
+    require(system.get("size_bytes") == actual_disk.stat().st_size,
             "Android system image byte count differs from partition manifest")
     checksum = digest(actual_disk)
     require(checksum == system.get("sha256")
