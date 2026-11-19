@@ -26,7 +26,7 @@ RULER = "Andarium/Andarium/Shared/Ruler.swift"
 SHEETS = "Andarium/Andarium/Shared/Sheets.swift"
 FILES = (DISPLAY_CORE, DISPLAY_VIEW, MODEL, RESOLUTION, HOME, GUEST_LAYER,
          APP_ENTRY, PREFERENCES, APP, RULER, SHEETS)
-ADD_SWIFT = ("RedDisplayChoice.swift", "RedDeviceDisplay.swift", "RedMemoryChoices.swift", "RedResolutionSheet.swift")
+ADD_SWIFT = ("RedDisplayChoice.swift", "RedDeviceDisplay.swift", "RedMemoryPresetSettings.swift", "RedMemoryChoices.swift", "RedResolutionSheet.swift")
 
 
 def once(text: str, old: str, new: str, name: str) -> str:
