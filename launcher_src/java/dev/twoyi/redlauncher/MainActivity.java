@@ -158,6 +158,7 @@ public final class MainActivity extends Activity {
             if (screen == HOME) {
                 drawRealDeviceStatus(canvas, x, y, scale);
                 drawInstalledState(canvas, x, y, scale);
+                drawHostAppRail(canvas, x, y, scale);
             }
             // The source mockups show root and Android 17 as active. Mask those claims until verified.
             if (!rootVerified || !"17".equals(androidVersion)) {
@@ -253,6 +254,29 @@ public final class MainActivity extends Activity {
             }
         }
 
+        /** Actual tap targets drawn over the reference skin, not fake IPA icons.
+         * The Android 17 environment sends a named request to the Nexaris host.
+         */
+        private void drawHostAppRail(Canvas canvas, float x, float y, float scale) {
+            final String[] names = {"Nexaris", "URL OS", "Rap Box", "Rap Keys", "Settings"};
+            final String[] symbols = {"N", "◎", "◇", "⌨", "⚙"};
+            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+            p.setColor(Color.rgb(6, 6, 9));
+            canvas.drawRoundRect(new RectF(x+18*scale, y+1452*scale,
+                x+845*scale, y+1574*scale), 19*scale, 19*scale, p);
+            p.setTextAlign(Paint.Align.CENTER);
+            p.setFakeBoldText(true);
+            for (int i=0; i<names.length; i++) {
+                float cx = x + (i + 0.5f) * 863f / 5f * scale;
+                p.setColor(Color.rgb(242, 43, 67));
+                p.setTextSize(37*scale);
+                canvas.drawText(symbols[i], cx, y+1510*scale, p);
+                p.setColor(Color.WHITE);
+                p.setTextSize(18*scale);
+                canvas.drawText(names[i], cx, y+1545*scale, p);
+            }
+        }
+
         @Override public boolean onTouchEvent(MotionEvent e) {
             if(e.getAction() != MotionEvent.ACTION_UP || !dest.contains(e.getX(),e.getY())) return true;
             float xx=(e.getX()-dest.left)*863/dest.width();
@@ -261,6 +285,18 @@ public final class MainActivity extends Activity {
             else if(screen==SETTINGS) settingsTap(xx,yy);
             else browserTap(xx,yy);
             return true;
+        }
+    }
+
+    /** The host executes these native apps; Android never installs or runs an IPA. */
+    void requestHostApp(String route) {
+        if (!HostLaunchWire.allowed(route)) return;
+        try {
+            boolean queued = HostLaunchBridgeProvider.request(this, route);
+            toast(queued ? "Requesting Nexaris host app…" :
+                "A host request is already pending. Open Nexaris to complete it.");
+        } catch (RuntimeException unavailable) {
+            toast("Nexaris host bridge is unavailable in this guest image.");
         }
     }
 
@@ -275,6 +311,12 @@ public final class MainActivity extends Activity {
         if (y < 185) { showRuntimeStatus(); return; }
         if (x > 235 && x < 590 && y >= 515 && y < 615) {
             checkRootOnUserTap();
+            return;
+        }
+        if (y>=1452 && y<1574) {
+            int index = Math.min(HostLaunchWire.ROUTES.length-1,
+                                 Math.max(0, (int)(x * 5f / 863f)));
+            requestHostApp(HostLaunchWire.ROUTES[index]);
             return;
         }
         if (y>625 && y<735) { searchApps();return; }
