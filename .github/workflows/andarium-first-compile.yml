@@ -27,7 +27,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: andarium-first-build-${{ github.ref }}
+  group: andarium-first-build-${{ github.ref }}-${{ inputs.phase || (contains(github.event.head_commit.message, '[host-unsigned]') && 'host-unsigned' || (contains(github.event.head_commit.message, '[ipa-preview]') && 'ipa-preview' || 'preview')) }}
   cancel-in-progress: false
 
 jobs:
