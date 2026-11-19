@@ -20,6 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def commands() -> list[tuple[str, list[str], int]]:
     python = sys.executable
     return [
+        ('Python syntax and verifier entrypoints', [python, 'tools/python_syntax_gate.py'], 60),
         ('Python regression suite', [python, '-m', 'unittest', 'discover',
                                      '-s', 'tests', '-q'], 210),
         ('Root Java subprocess harness', [python, 'tools/root_probe_java_test.py'], 60),
