@@ -1,0 +1,5 @@
+Host unsigned compiler gate: pinned Android 17 ARM64 4KiB kernel source build
+Pinned Kernarium revision: fbe12ee72d195f0241c4fc24090a98b259026604
+Accepted artifact: android-6.18-arm64-4k-20261119-6.18.60-ca1
+Required bridge ABI: 29 / 0x3d09b8eeee7ea3c2
+The workflow must build, publish, and verify the real bundle before host CMake; a failed verifier blocks the host. No signing or release claim.
