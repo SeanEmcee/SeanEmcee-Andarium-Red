@@ -21,6 +21,8 @@ class GuestAccentTransportTests(unittest.TestCase):
         self.assertIn("func redApplyAccentRGB(_ rgb: UInt32) async throws", patched)
         self.assertIn("RedGuestAccentTransport.command(rgb: rgb)", patched)
         self.assertIn("operations.shell(command, limit: .seconds(15))", patched)
+        self.assertIn("RedGuestAccentTransport.readCommand", patched)
+        self.assertIn("RedGuestAccentTransport.verifyRead(", patched)
         self.assertEqual(overlay.patch_guest_accent_runtime(patched), patched)
 
     def test_rejects_changed_host_interface(self):
@@ -40,7 +42,7 @@ class GuestAccentTransportTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             run = subprocess.run([str(binary)], capture_output=True, text=True, timeout=15)
             self.assertEqual(run.returncode, 0, run.stderr)
-            self.assertIn("GUEST_ACCENT_SWIFT_8_PASS", run.stdout)
+            self.assertIn("GUEST_ACCENT_SWIFT_17_PASS", run.stdout)
 
 
 if __name__ == "__main__":
