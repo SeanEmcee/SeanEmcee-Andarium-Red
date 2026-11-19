@@ -94,6 +94,34 @@ def inspection(kernarium: Path, *, source: Path = ROOT, require_artifacts: bool 
         except Exception as exc:
             add("Host patch anchors and idempotence", False, str(exc))
 
+    # Kernarium already implements opt-in host permission bridges. We must
+    # preserve those UI handlers and live driver capabilities in the pinned
+    # checkout; overlay-only tests cannot establish that permissions work.
+    host_model = kernarium / "Andarium/Andarium/Shared/Model.swift"
+    host_home = kernarium / "Andarium/Andarium/Shared/HomeSections.swift"
+    host_live = kernarium / "Andarium/Andarium/Live/LiveRuntime.swift"
+    permission_requirements = {
+        "Camera": ("setCamera(", "model.setCamera("),
+        "Microphone": ("setMicrophone(", "model.setMicrophone("),
+        "Location": ("setLocation(", "model.setLocation("),
+    }
+    model_text = host_model.read_text() if host_model.is_file() else ""
+    home_text = host_home.read_text() if host_home.is_file() else ""
+    live_text = host_live.read_text() if host_live.is_file() else ""
+    for name, (model_hook, ui_hook) in permission_requirements.items():
+        add(f"Native {name.lower()} permission setting retained",
+            model_hook in model_text and ui_hook in home_text,
+            "iOS authorization is still granted and exercised only on a device")
+    add("Camera boot setting connected to runtime",
+        "cameraBootMode()" in live_text and "android_camera_mode" in live_text)
+    add("Foreground location runtime connected",
+        "LocationSession(" in live_text)
+    instance = kernarium / "Andarium/AndariumCore/Sources/AndariumCore/Instance.swift"
+    add("Persistent guest instance metadata source retained",
+        instance.is_file() and "instance.json" in instance.read_text()
+        if instance.is_file() else False,
+        "Persistence must still be tested across relaunch and device restart")
+
     for setting in ("com.apple.developer.kernel.extended-virtual-addressing",
                     "com.apple.developer.kernel.increased-memory-limit"):
         entitlements = kernarium / "Andarium/Config/Andarium.entitlements"
@@ -135,7 +163,7 @@ def inspection(kernarium: Path, *, source: Path = ROOT, require_artifacts: bool 
                                   str(source / "host" / fname)], cwd=source)
                 add(f"Swift syntax: {fname}", good, info)
     else:
-        add("Automated regression tests", False, "skipped by request", required=False)
+        add("Automated regression tests", False, "skipped by request; cannot certify source gate", required=True)
 
     if require_artifacts:
         stage = kernarium / ".build/andarium-system"
