@@ -227,12 +227,16 @@ def patch_guest_accent_runtime(original: str) -> str:
         return original
     if marker not in original or 'private var operations: AdbGuestOperations' not in original:
         raise ValueError('Upstream LiveRuntime.swift Android operations interface changed')
-    addition = '''    /// Send a checked 24-bit RGB on an explicit Android launcher transition.
-    /// This starts the guest launcher; do not use as a silent background sync.
+    addition = '''    /// Send a checked RGB to the shell-authorized guest ContentProvider.
+    /// No Activity launch is required; verify persisted readback before returning.
     func redApplyAccentRGB(_ rgb: UInt32) async throws {
         let command = try RedGuestAccentTransport.command(rgb: rgb)
         let output = try await operations.shell(command, limit: .seconds(15))
         try RedGuestAccentTransport.verify(output.text, exitCode: output.exitCode)
+        let readback = try await operations.shell(
+            RedGuestAccentTransport.readCommand, limit: .seconds(15))
+        try RedGuestAccentTransport.verifyRead(
+            readback.text, exitCode: readback.exitCode, expectedRGB: rgb)
     }
 
 '''
