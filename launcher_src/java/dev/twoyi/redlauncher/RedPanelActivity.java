@@ -37,6 +37,8 @@ public final class RedPanelActivity extends Activity {
     private static final String TITANIUM_PACKAGE = "io.github.jqssun.helium";
 
     private LinearLayout content;
+    private EditText browserAddress;
+    private String pendingBrowserAddress = "";
     private final SharedPreferences.OnSharedPreferenceChangeListener themeObserver =
         (preferences, key) -> {
             if (!RedAccentStore.KEY.equals(key)) return;
@@ -44,6 +46,11 @@ public final class RedPanelActivity extends Activity {
                 int next = RedAccentStore.color(RedAccentStore.load(this));
                 if (next == accent || content == null) return;
                 accent = next;
+                // Theme updates should not discard the URL a person is typing.
+                if (BROWSER_PANEL.equals(getIntent().getStringExtra(EXTRA_PANEL)) &&
+                    browserAddress != null) {
+                    pendingBrowserAddress = browserAddress.getText().toString();
+                }
                 content.removeAllViews();
                 if (BROWSER_PANEL.equals(getIntent().getStringExtra(EXTRA_PANEL))) buildBrowser();
                 else buildSettings();
@@ -196,7 +203,9 @@ public final class RedPanelActivity extends Activity {
     private void buildBrowser() {
         top("Titanium Browser", "Real Chromium tabs and extensions live in Titanium, not in a screenshot.");
         EditText address = new EditText(this);
+        browserAddress = address;
         address.setSingleLine(true);
+        address.setText(pendingBrowserAddress);
         address.setTextColor(Color.WHITE);
         address.setHintTextColor(SECONDARY);
         address.setHint("https://example.org");
