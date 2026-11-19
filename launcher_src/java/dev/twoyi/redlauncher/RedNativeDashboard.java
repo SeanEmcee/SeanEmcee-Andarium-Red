@@ -186,7 +186,7 @@ final class RedNativeDashboard extends ScrollView {
             Drawable drawable = null;
             if (available) {
                 try { drawable = owner.getPackageManager().getApplicationIcon(tile.packageName); }
-                catch (PackageManager.NameNotFoundException ignored) { available = false; }
+                catch (PackageManager.NameNotFoundException | SecurityException ignored) { available = false; }
             }
             if (drawable != null) icon.setImageDrawable(drawable);
             else {
@@ -246,7 +246,7 @@ final class RedNativeDashboard extends ScrollView {
 
     private boolean appAvailable(String packageName) {
         try { owner.getPackageManager().getPackageInfo(packageName, 0); return true; }
-        catch (PackageManager.NameNotFoundException absent) { return false; }
+        catch (PackageManager.NameNotFoundException | SecurityException absent) { return false; }
     }
 
     private String readBattery() {
