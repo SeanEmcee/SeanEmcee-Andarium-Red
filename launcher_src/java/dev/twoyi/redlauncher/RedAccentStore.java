@@ -29,11 +29,15 @@ final class RedAccentStore {
     static boolean acceptLaunchAccent(Context context, Intent intent) {
         if (intent == null || !intent.hasExtra(EXTRA_RGB)) return false;
         final int color = intent.getIntExtra(EXTRA_RGB, -1);
-        if (!validRGB(color)) return false;
+        return acceptRGB(context, color);
+    }
+
+    static boolean acceptRGB(Context context, int color) {
+        if (context == null || !validRGB(color)) return false;
+        // Do not acknowledge a theme change until it is durably saved.
+        // commit() avoids losing the update if the guest shuts down immediately.
         SharedPreferences.Editor editor = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit();
-        editor.putInt(KEY, color);
-        editor.apply();
-        return true;
+        return editor.putInt(KEY, color).commit();
     }
 
     static int color(int rgb) {
