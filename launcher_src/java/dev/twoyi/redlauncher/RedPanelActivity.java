@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -36,6 +37,18 @@ public final class RedPanelActivity extends Activity {
     private static final String TITANIUM_PACKAGE = "io.github.jqssun.helium";
 
     private LinearLayout content;
+    private final SharedPreferences.OnSharedPreferenceChangeListener themeObserver =
+        (preferences, key) -> {
+            if (!RedAccentStore.KEY.equals(key)) return;
+            runOnUiThread(() -> {
+                int next = RedAccentStore.color(RedAccentStore.load(this));
+                if (next == accent || content == null) return;
+                accent = next;
+                content.removeAllViews();
+                if (BROWSER_PANEL.equals(getIntent().getStringExtra(EXTRA_PANEL))) buildBrowser();
+                else buildSettings();
+            });
+        };
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -53,6 +66,18 @@ public final class RedPanelActivity extends Activity {
         setContentView(scroll);
         if (BROWSER_PANEL.equals(getIntent().getStringExtra(EXTRA_PANEL))) buildBrowser();
         else buildSettings();
+    }
+
+    @Override protected void onStart() {
+        super.onStart();
+        getSharedPreferences(RedAccentStore.PREFS, MODE_PRIVATE)
+            .registerOnSharedPreferenceChangeListener(themeObserver);
+    }
+
+    @Override protected void onStop() {
+        getSharedPreferences(RedAccentStore.PREFS, MODE_PRIVATE)
+            .unregisterOnSharedPreferenceChangeListener(themeObserver);
+        super.onStop();
     }
 
     private int dp(float value) { return (int) (getResources().getDisplayMetrics().density * value + 0.5f); }
@@ -121,7 +146,7 @@ public final class RedPanelActivity extends Activity {
 
     private boolean isInstalled(String packageName) {
         try { getPackageManager().getPackageInfo(packageName, 0); return true; }
-        catch (PackageManager.NameNotFoundException absent) { return false; }
+        catch (PackageManager.NameNotFoundException | SecurityException absent) { return false; }
     }
 
     private void openApp(String packageName) {
