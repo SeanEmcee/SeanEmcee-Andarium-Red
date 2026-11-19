@@ -1,3 +1,5 @@
+> **v17 extension:** The Android HOME→native Nexaris five-app shortcut source and crossfade logic are now committed in **both** private repositories. Java route wire **45/45**, Swift route wire **25/25** and Android-shaped provider behavior **17/17** checked against exact GitHub blobs. The actual Nexaris Andarium runtime adapter, Android 17 image, Xcode build and physical iPhone fade remain **unverified**. See [v17 handoff](ANDROID_HOST_HANDOFF_v17.md). The v15 checks below remain historical baseline, not an updated release certification.
+
 # Andarium Red v15 — pre-build readiness ledger
 
 **Prepared branch:** feature/andd-memory-tuning
