@@ -42,10 +42,10 @@ SOURCES = {
           static void eq(boolean ok,String msg){if(!ok)throw new AssertionError(msg);}
           public static void main(String[] args){
             Ctx c=new Ctx();
-            eq(RedAccentStore.load(c)==0xF43447,"default");
+            eq(RedAccentStore.load(c)==0xF22B43,"default");
             eq(!RedAccentStore.acceptLaunchAccent(c,null),"null");
             eq(!RedAccentStore.acceptLaunchAccent(c,new Launch(false,0)),"absent");
-            eq(RedAccentStore.load(c)==0xF43447,"unchanged");
+            eq(RedAccentStore.load(c)==0xF22B43,"unchanged");
             eq(RedAccentStore.acceptLaunchAccent(c,new Launch(true,0x12ABFE)),"accept");
             eq(RedAccentStore.load(c)==0x12ABFE,"persisted");
             eq(RedAccentStore.color(0x12ABFE)==0xFF12ABFE,"argb");
@@ -55,7 +55,7 @@ SOURCES = {
             eq(RedAccentStore.acceptLaunchAccent(c,new Launch(true,0x0)),"black");
             eq(RedAccentStore.load(c)==0x0,"black persisted");
             c.prefs.saved.put("nexaris_accent_rgb", -5);
-            eq(RedAccentStore.load(c)==0xF43447,"corrupt fallback");
+            eq(RedAccentStore.load(c)==0xF22B43,"corrupt fallback");
             System.out.println("ACCENT_STORE_13_PASS (local Java stubs; not guest boot)");
           }
         }'''
