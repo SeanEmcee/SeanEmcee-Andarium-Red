@@ -169,6 +169,44 @@ final class RedNativeDashboard extends ScrollView {
         sp.bottomMargin = dp(21);
         content.addView(search, sp);
 
+        // Native host applications are shortcuts, not Android-installed IPAs.
+        // They sit beside Magisk/Termux/HeliBoard in the Android HOME.
+        TextView hostTitle = label("NEXARIS HOST APPS · OPEN ON iOS", 12, accent, true);
+        hostTitle.setPadding(dp(5), dp(5), 0, dp(8));
+        hostTitle.setContentDescription("Apps executed by the iOS Nexaris host");
+        content.addView(hostTitle);
+        GridLayout hostGrid = new GridLayout(owner);
+        hostGrid.setColumnCount(5);
+        String[] hostLabels = {"Nexaris", "URL OS", "Rap Box", "Rap Keys", "Settings"};
+        String[] hostIcons = {"N", "◎", "◇", "⌨", "⚙"};
+        String[] hostRoutes = HostLaunchWire.ROUTES;
+        int hostWidth = getResources().getDisplayMetrics().widthPixels;
+        int hostCell = Math.max(dp(56), (hostWidth - dp(30)) / 5);
+        for (int i = 0; i < hostLabels.length; i++) {
+            final String route = hostRoutes[i];
+            LinearLayout hostTile = new LinearLayout(owner);
+            hostTile.setOrientation(LinearLayout.VERTICAL);
+            hostTile.setGravity(Gravity.CENTER_HORIZONTAL);
+            hostTile.setContentDescription(hostLabels[i] + " · open native Nexaris host");
+            TextView icon = label(hostIcons[i], 26, accent, true);
+            icon.setGravity(Gravity.CENTER);
+            icon.setBackground(background(CARD, accent, 17));
+            hostTile.addView(icon, new LinearLayout.LayoutParams(dp(55), dp(55)));
+            TextView name = label(hostLabels[i], 11, Color.WHITE, false);
+            name.setGravity(Gravity.CENTER);
+            name.setMaxLines(2);
+            hostTile.addView(name, new LinearLayout.LayoutParams(-1, dp(37)));
+            hostTile.setOnClickListener(v -> owner.requestHostApp(route));
+            GridLayout.LayoutParams tileParams = new GridLayout.LayoutParams();
+            tileParams.width = hostCell;
+            tileParams.height = dp(101);
+            hostGrid.addView(hostTile, tileParams);
+        }
+        content.addView(hostGrid);
+        TextView guestTitle = label("ANDROID GUEST APPS", 12, MUTED, true);
+        guestTitle.setPadding(dp(5), dp(9), 0, dp(8));
+        content.addView(guestTitle);
+
         GridLayout grid = new GridLayout(owner);
         grid.setColumnCount(4);
         // Each cell uses the actual screen width; the GridLayout is not a bitmap.
