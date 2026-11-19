@@ -19,7 +19,8 @@ struct GuestAccentHarness {
             preconditionFailure("out-of-range RGB accepted")
         } catch RedGuestAccentTransport.AccentError.outOfRange {}
         try RedGuestAccentTransport.verify("Starting: Intent { ... }", exitCode: 0)
-        for message in ["Error: Activity class does not exist", "java.lang.SecurityException", "Permission Denial: not exported"] {
+        try RedGuestAccentTransport.verify("Warning: Activity not started, intent has been delivered to currently running top-most instance.", exitCode: 0)
+        for message in ["", "Success without explicit activity confirmation", "Error: Activity class does not exist", "java.lang.SecurityException", "Permission Denial: not exported"] {
             do {
                 try RedGuestAccentTransport.verify(message, exitCode: 0)
                 preconditionFailure("Android error reply accepted")
@@ -29,6 +30,6 @@ struct GuestAccentHarness {
             try RedGuestAccentTransport.verify("", exitCode: 1)
             preconditionFailure("nonzero exit accepted")
         } catch RedGuestAccentTransport.AccentError.guestRejected {}
-        print("GUEST_ACCENT_SWIFT_8_PASS (local command validator; not guest execution)")
+        print("GUEST_ACCENT_SWIFT_11_PASS (local command validator; not guest execution)")
     }
 }
