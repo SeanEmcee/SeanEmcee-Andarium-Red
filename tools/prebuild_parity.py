@@ -290,6 +290,8 @@ def main() -> None:
     p.add_argument('--kernarium', type=Path)
     p.add_argument('--report', type=Path)
     p.add_argument('--require-release-go', action='store_true')
+    p.add_argument('--require-source-ready', action='store_true',
+                   help='Exit nonzero if any source gate is missing, without requiring device acceptance')
     args = p.parse_args()
     report = inspect(ROOT, args.kernarium)
     output = json.dumps(report, indent=2) + '\n'
@@ -298,6 +300,8 @@ def main() -> None:
     print(output)
     if args.require_release_go and report['release_gate'] != 'GO':
         sys.exit(2)
+    if args.require_source_ready and report['source_checks_passed'] != report['source_checks_total']:
+        sys.exit(1)
 
 
 if __name__ == '__main__':
