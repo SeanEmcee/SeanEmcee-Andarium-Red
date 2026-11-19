@@ -23,11 +23,15 @@ def archive(*, modules=True, release="17", build="1001"):
         "ro.build.version.incremental=" + build,
         "ro.build.version.security_patch=2026-11-05",
     )) + "\n"
+    apk = io.BytesIO()
+    with zipfile.ZipFile(apk, "w") as a:
+        a.writestr("AndroidManifest.xml", b"\\x03\\x00\\x08\\x00")
+        a.writestr("classes.dex", b"dex\\n039\\x00")
     with zipfile.ZipFile(payload, "w") as z:
         z.writestr("SYSTEM/build.prop", buildprop)
         if modules:
-            z.writestr("SYSTEM/app/TwoyiRedLauncher/TwoyiRedLauncher.apk", "fake")
-            z.writestr("SYSTEM/priv-app/TwoyiRedClipboard/TwoyiRedClipboard.apk", "fake")
+            z.writestr("SYSTEM/app/TwoyiRedLauncher/TwoyiRedLauncher.apk", apk.getvalue())
+            z.writestr("SYSTEM/priv-app/TwoyiRedClipboard/TwoyiRedClipboard.apk", apk.getvalue())
     payload.seek(0)
     return zipfile.ZipFile(payload)
 
@@ -43,6 +47,22 @@ class AndroidProofPackingTests(unittest.TestCase):
     def test_rejects_guest_without_our_integrations(self):
         with archive(modules=False) as z:
             with self.assertRaisesRegex(ValueError, "TwoyiRedLauncher"):
+                target_metadata(z)
+
+    def test_rejects_named_but_invalid_apk(self):
+        payload = io.BytesIO()
+        with zipfile.ZipFile(payload, "w") as outer:
+            outer.writestr("SYSTEM/build.prop", "\\n".join((
+                "ro.build.version.release=17",
+                "ro.build.fingerprint=andarium-red/test",
+                "ro.build.version.incremental=1001",
+                "ro.build.version.security_patch=2026-11-05",
+            )))
+            outer.writestr("SYSTEM/app/TwoyiRedLauncher/TwoyiRedLauncher.apk", b"fake")
+            outer.writestr("SYSTEM/priv-app/TwoyiRedClipboard/TwoyiRedClipboard.apk", b"fake")
+        payload.seek(0)
+        with zipfile.ZipFile(payload) as z:
+            with self.assertRaises(zipfile.BadZipFile):
                 target_metadata(z)
 
     def test_rejects_non17_target(self):
