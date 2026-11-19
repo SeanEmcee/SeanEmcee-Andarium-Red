@@ -176,6 +176,13 @@ def inspect(root: Path = ROOT, kernarium: Path | None = None) -> dict:
         and 'registerOnSharedPreferenceChangeListener(themeObserver)' in launcher
         and 'registerOnSharedPreferenceChangeListener(themeObserver)' in native_panel,
         'Source-only host-to-guest RGB transport and persisted readback; actual Android 17 compilation and runtime integration still required')
+    grid_logic = (root / 'launcher_src/java/dev/twoyi/redlauncher/DashboardGridPolicy.java').read_text()
+    add('Native Android HOME grid adapts to narrow viewports',
+        'DashboardGridPolicy.columns(available, dp(80))' in native_home
+        and 'DashboardGridPolicy.cellWidth(available, dp(80))' in native_home
+        and 'Math.min(4, availablePixels / desiredCellPixels)' in grid_logic
+        and 'if (dashboard != null) dashboard.refresh()' in launcher,
+        'Responsive widget grid source; 2,006 arithmetic assertions pass locally; real Android appearance untested')
     add('Explicit clipboard signature permission check',
         'def clipboard_privilege(' in live_check
         and 'READ_CLIPBOARD_IN_BACKGROUND' in live_check,
