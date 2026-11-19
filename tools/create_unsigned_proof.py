@@ -95,10 +95,19 @@ def target_metadata(archive: zipfile.ZipFile) -> tuple[dict[str, str], dict[str,
         # Android APK archives with a manifest and DEX, not a placeholder ZIP.
         with zipfile.ZipFile(io.BytesIO(archive.read(candidate))) as apk:
             names = apk.namelist()
-            if ("AndroidManifest.xml" not in names or
-                    not any(name.endswith(".dex") for name in names) or
+            dex_name = next((name for name in names if name.endswith(".dex")), "")
+            if ("AndroidManifest.xml" not in names or not dex_name or
                     apk.testzip() is not None):
                 raise ValueError(f"Compiled module {module} has invalid APK payload")
+            with apk.open("AndroidManifest.xml") as xml:
+                axml_prefix = xml.read(4)
+            with apk.open(dex_name) as dex:
+                dex_prefix = dex.read(8)
+            if axml_prefix != bytes((3, 0, 8, 0)) or (
+                    len(dex_prefix) != 8 or
+                    dex_prefix[:4] != bytes((100, 101, 120, 10)) or
+                    dex_prefix[7] != 0):
+                raise ValueError(f"Compiled module {module} lacks binary Android XML or DEX header")
         located[module] = candidate
     return android, located
 
