@@ -6,6 +6,7 @@ import UIKit
 /// Never polls a clipboard or synchronizes anything in the background.
 struct RedClipboardControls: View {
     let runtime: LiveRuntime?
+    @ObservedObject private var accentState = RedHostAccentState.shared
     @State private var active = false
     @State private var message: String?
 
@@ -20,10 +21,10 @@ struct RedClipboardControls: View {
         } label: {
             Image(systemName: "doc.on.clipboard")
                 .font(.system(size: 17, weight: .semibold))
-                .foregroundStyle(.red)
+                .foregroundStyle(accentState.color)
                 .padding(11)
                 .background(.black.opacity(0.92), in: Circle())
-                .overlay(Circle().stroke(.red.opacity(0.65), lineWidth: 1))
+                .overlay(Circle().stroke(accentState.color.opacity(0.65), lineWidth: 1))
         }
         .disabled(active || runtime == nil)
         .accessibilityLabel("Android clipboard")
