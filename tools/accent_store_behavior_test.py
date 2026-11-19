@@ -27,7 +27,8 @@ SOURCES = {
             public int getInt(String k,int fallback){return saved.getOrDefault(k,fallback);}
             public SharedPreferences.Editor edit(){return this;}
             public SharedPreferences.Editor putInt(String k,int v){saved.put(k,v);return this;}
-            public void apply(){}\n            public boolean commit(){return true;}
+            public void apply(){}
+            public boolean commit(){return true;}
           }
           static class Ctx extends Context {
             Prefs prefs = new Prefs();
