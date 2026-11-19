@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import shutil
 import subprocess
 import sys
 import time
@@ -30,7 +29,8 @@ def commands() -> list[tuple[str, list[str], int]]:
         ('Android native panels Java stubs', [python, 'tools/android_panel_stub_compile.py'], 60),
         ('Android RGB Java persistence', [python, 'tools/accent_store_behavior_test.py'], 60),
         ('Android RGB provider permission behavior', [python, 'tools/theme_provider_behavior_test.py'], 60),
-        ('Evidence-based source gates', [python, 'tools/prebuild_parity.py'], 60),
+        ('Evidence-based source gates', [python, 'tools/prebuild_parity.py',
+                                         '--require-source-ready'], 60),
     ]
 
 
@@ -66,6 +66,9 @@ def run(*, only: str = '', report: Path | None = None) -> int:
         'product': 'Andarium Red Android 17',
         'scope': 'offline source and test harnesses only; no Android/iOS application build',
         'source_checks_passed': all(row['passed'] for row in rows),
+        'check_scope': 'FILTERED: not all checks executed' if only else 'COMPLETE: all configured checks executed',
+        'checks_attempted': len(rows),
+        'checks_configured': len(commands()),
         'checks': rows,
         'elapsed_seconds': round(time.monotonic() - started, 2),
         'release_gate': 'NO-GO',
