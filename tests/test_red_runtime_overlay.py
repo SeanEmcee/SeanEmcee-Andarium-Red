@@ -65,8 +65,10 @@ class GuestMetalView {
             accessibility: accessibility,
 """,
         red.APP_ENTRY: "        model.chosenScale = DisplayOptionsStore.load().chosenScale",
-        red.PREFERENCES:
-            "        if let options = model.displayOptionsToKeep { DisplayOptionsStore.save(options, to: defaults) }",
+        red.PREFERENCES: """
+        if let options = model.displayOptionsToKeep { DisplayOptionsStore.save(options, to: defaults) }
+            _ = (model.displayOptionsToKeep, model.showStatsToKeep, model.pointerAsTouchToKeep, model.heatLimitToKeep)
+""",
         red.APP: "        model.screenDidChange(nativeScale: Double(scene.screen.nativeScale))",
         red.RULER: """
             memory
@@ -113,6 +115,7 @@ class RedRuntimeOverlayTests(unittest.TestCase):
         self.assertIn("RedMemoryPresetRow", patched[red.RULER])
         self.assertIn("RedResolutionSheet()", patched[red.HOME])
         self.assertIn("redResolutionSetting", patched[red.APP_ENTRY])
+        self.assertIn("model.redResolutionSetting, model.showStatsToKeep", patched[red.PREFERENCES])
         self.assertIn("nativePixels: scene.screen.nativeBounds.size", patched[red.RESOLUTION])
         for fname in red.ADD_SWIFT:
             self.assertEqual(
