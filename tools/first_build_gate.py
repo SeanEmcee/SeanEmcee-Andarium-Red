@@ -151,6 +151,7 @@ def inspection(kernarium: Path, *, source: Path = ROOT, require_artifacts: bool 
                 ("Android clipboard provider Java typecheck", "tools/java_compile_smoke.py"),
                 ("Android clipboard Java behavior", "tools/clipboard_provider_behavior_test.py"),
                 ("Native red Settings/browser Java typecheck", "tools/android_panel_stub_compile.py"),
+                ("iPhone network transport Java behavior", "tools/host_transport_java_test.py"),
                 ("Native red home Java typecheck", "tools/native_home_stub_compile.py"),
                 ("User-initiated Magisk root Java behavior", "tools/root_probe_java_test.py"),
                 ("Nexaris accent Java behavior", "tools/accent_store_behavior_test.py"),
@@ -183,7 +184,7 @@ def inspection(kernarium: Path, *, source: Path = ROOT, require_artifacts: bool 
                     add("Memory profile defaults and persistence behavior",
                         good and "RED_MEMORY_PRESET_12_PASS" in info, info)
         if swiftc is not None:
-            for fname in red.ADD_SWIFT:
+            for fname in (*red.ADD_SWIFT, "RedHostTransportRelay.swift"):
                 good, info = run([swiftc, "-frontend", "-parse",
                                   str(source / "host" / fname)], cwd=source)
                 add(f"Swift syntax: {fname}", good, info)
