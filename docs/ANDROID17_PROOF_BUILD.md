@@ -1,7 +1,7 @@
 # Andarium Red — reproducible Android 17 proof build handoff
 
 **State:** source and invocation plan verified against pinned upstream public
-Kernarium interfaces at \`fbe12ee72d195f0241c4fc24090a98b259026604\`.
+Kernarium interfaces at `fbe12ee72d195f0241c4fc24090a98b259026604`.
 Actual Android/Soong source compilation and image production **not yet run**.
 This is NOT a signed Google/Play image and NOT proof of Magisk-managed root.
 
@@ -9,7 +9,7 @@ This is NOT a signed Google/Play image and NOT proof of Magisk-managed root.
 
 1. **x86_64 Linux** with a large Android build workspace, pinned Repo checkout,
    Git LFS, a verified upstream Android kernel artifact, and the tools specified
-   in Kernarium's \`android/lineage-24/README.md\`. The Android 17 image producer
+   in Kernarium's `android/lineage-24/README.md`. The Android 17 image producer
    is too large to replace with a mock APK ZIP.
 2. **Mac with Xcode 27** to package the iOS guest runtime and host app. iOS
    code-signing, effective entitlements and a real iPhone are subsequent gates.
@@ -19,9 +19,9 @@ This is NOT a signed Google/Play image and NOT proof of Magisk-managed root.
 Set actual **absolute local paths**. The AOSP output directory must be inside
 the AOSP Repo workspace. The kernel artifact must match upstream's accepted
 Android 4 KiB kernel descriptor. Source files in Kernarium must first be
-integrated using this project's \`integrate_andarium.py\`.
+integrated using this project's `integrate_andarium.py`.
 
-\`\`\`sh
+```sh
 # First, on the machine with the pinned Kernarium/Andarium Red checkouts:
 python3 integrate_andarium.py --kernarium /ABS/Kernarium --source . --dry-run
 python3 integrate_andarium.py --kernarium /ABS/Kernarium --source .
@@ -54,29 +54,29 @@ python3 /ABS/AndariumRed/tools/create_unsigned_proof.py \
   --kernel-cmdline /ABS/known-good-kernel-command-line.txt \
   --output /ABS/red17-proof \
   --release-name red-v15-1001
-\`\`\`
+```
 
-The template \`1001\` and \`12\` are **examples**, not inferred build
+The template `1001` and `12` are **examples**, not inferred build
 identities or verified resource recommendations. The kernel command line must
 come from a compatible, reviewed Android guest configuration; do not invent
 boot switches. Locate the actual target-files archive emitted by Soong if
 its output directory differs. The proof packager requires that the *compiled*
-target-files contain both \`TwoyiRedLauncher\` and \`TwoyiRedClipboard\`, that
-\`SYSTEM/build.prop\` identifies Android 17 with a real numeric build
+target-files contain both `TwoyiRedLauncher` and `TwoyiRedClipboard`, that
+`SYSTEM/build.prop` identifies Android 17 with a real numeric build
 number, and that the assembled GPT system disk matches its own SHA-256
 partition layout. It refuses to overwrite existing output.
 
 ## iOS consumer of the proof (Mac)
 
-\`\`\`sh
+```sh
 cd /ABS/AndariumRed
 bash scripts/first_build.sh /ABS/Kernarium --preview
 bash scripts/first_build.sh /ABS/Kernarium --build \
   --with-apps --guest-proof /ABS/red17-proof
-\`\`\`
+```
 
 The Mac stage verifies the unsigned-proof release through Kernarium's own
-\`stage-system-image.py --unsigned-proof\`, which rejects malformed or
+`stage-system-image.py --unsigned-proof`, which rejects malformed or
 incompatible images. A proof guest needs a fresh/isolated guest instance and
 cannot be used for App Store/TestFlight release. The six pinned APK downloads
 are optional, independently verified from publisher assets, and installed
