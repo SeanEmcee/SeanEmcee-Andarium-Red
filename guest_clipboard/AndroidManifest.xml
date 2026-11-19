@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="dev.twoyi.redclipboard">
+    <!-- Signature permission; honored only when the app is signed by the image's platform key. -->
+    <uses-permission android:name="android.permission.READ_CLIPBOARD_IN_BACKGROUND" />
+    <application android:hasCode="true" android:allowBackup="false"
+        android:label="Android Clipboard Bridge" android:usesCleartextTraffic="false">
+        <!-- Never allow ordinary Android applications to call this provider. -->
+        <provider android:name=".ClipboardBridgeProvider"
+            android:authorities="dev.twoyi.redclipboard"
+            android:exported="true" android:grantUriPermissions="false" />
+    </application>
+</manifest>

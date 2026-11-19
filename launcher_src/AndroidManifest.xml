@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+  <!-- Needed for installed-app launch icons inside a guest-installed launcher. -->
+  <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+  <application android:theme="@android:style/Theme.Material.NoActionBar" android:label="Andarium Red"
+      android:usesCleartextTraffic="false" android:allowBackup="true">
+    <activity android:name=".RedPanelActivity" android:exported="false" />
+    <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.HOME"/>
+        <category android:name="android.intent.category.DEFAULT"/>
+      </intent-filter>
+    </activity>
+  </application>
+</manifest>

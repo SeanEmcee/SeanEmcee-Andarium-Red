@@ -1,0 +1,12 @@
+// SPDX-License-Identifier: Apache-2.0
+// Platform-signed to allow explicit user-requested clipboard reads while backgrounded.
+android_app {
+    name: "TwoyiRedClipboard",
+    srcs: ["java/**/*.java"],
+    manifest: "AndroidManifest.xml",
+    platform_apis: true,
+    certificate: "platform",
+    product_specific: true,
+    privileged: true,
+    optimize: { enabled: false },
+}
