@@ -37,6 +37,7 @@ concurrency:
 
 jobs:
   first-compile:
+    if: github.ref == 'refs/heads/feature/andd-memory-tuning'
     runs-on: xcode-27
     timeout-minutes: 180
     env:
