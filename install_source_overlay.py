@@ -75,6 +75,7 @@ android_app {
     name: "TwoyiRedLauncher",
     srcs: ["java/**/*.java"],
     asset_dirs: ["assets"],
+    resource_dirs: ["res"],
     manifest: "AndroidManifest.xml",
     sdk_version: "current",
     min_sdk_version: "33",
@@ -300,6 +301,22 @@ def apply(root: Path, source: Path, magisk_apk: Path | None, dry_run: bool,
     for name in ('home.png','settings.png','browser.png'):
         if not (source / 'assets' / name).is_file():
             raise ValueError(f'Missing exact visual reference asset {name}')
+    # Five host shortcuts are part of the Android 17 launcher, not optional
+    # stand-in assets. Require every route, activity and vector icon before
+    # mutating the upstream checked-out Android product.
+    for name in ('nexaris', 'urlos', 'rapbox', 'rapkeys', 'settings'):
+        icon = source / 'res/drawable' / f'ic_host_{name}.xml'
+        if not icon.is_file():
+            raise ValueError(f'Android host shortcut icon missing: {icon}')
+    for name in ('HostLaunchWire.java', 'HostLaunchBridgeProvider.java',
+                 'HostShortcutActivity.java'):
+        if not (source / 'java/dev/twoyi/redlauncher' / name).is_file():
+            raise ValueError(f'Android host shortcut source missing: {name}')
+    manifest_source = manifest.read_text()
+    for alias in ('HostNexaris', 'HostURLOS', 'HostRapBox',
+                  'HostRapKeys', 'HostSettings'):
+        if f'android:name=".{alias}"' not in manifest_source:
+            raise ValueError(f'Android host launcher alias missing: {alias}')
     java = list((source / 'java').rglob('*.java'))
     if not java:
         raise ValueError('Launcher Java source missing')
