@@ -64,12 +64,21 @@ if (( WITH_APPS )); then
     --heliboard-apk "$APKS/HeliBoard-v4.2-release.apk"
   )
 fi
+# macOS /bin/bash 3.2 + set -u treats an empty "${FLAGS[@]}" as
+# unbound. Expand only inside the nonempty branch.
+run_integration() {
+  if (( WITH_APPS )); then
+    python3 "$SOURCE/integrate_andarium.py" \
+      --kernarium "$KERNARIUM" --source "$SOURCE" "${FLAGS[@]}" "$@"
+  else
+    python3 "$SOURCE/integrate_andarium.py" \
+      --kernarium "$KERNARIUM" --source "$SOURCE" "$@"
+  fi
+}
 echo "Checking source integration without mutation..."
-python3 "$SOURCE/integrate_andarium.py" \
-  --kernarium "$KERNARIUM" --source "$SOURCE" "${FLAGS[@]}" --dry-run
+run_integration --dry-run
 echo "Applying source changes..."
-python3 "$SOURCE/integrate_andarium.py" \
-  --kernarium "$KERNARIUM" --source "$SOURCE" "${FLAGS[@]}"
+run_integration
 echo "Running first-build source gates..."
 python3 "$SOURCE/tools/first_build_gate.py" \
   --kernarium "$KERNARIUM" --source "$SOURCE"
