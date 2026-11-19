@@ -1,0 +1,3 @@
+Andarium public Xcode 27 native runtime host attempt #2
+Before CMake, fetch and build actual pinned Apple GPU, iOS network, storage, zstd dependencies.
+Do not build Nexaris. No signing. No pretend Android image.

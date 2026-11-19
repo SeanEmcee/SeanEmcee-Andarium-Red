@@ -43,6 +43,10 @@ import java.util.Locale;
 public final class MainActivity extends Activity {
     private static final int HOME = 0, SETTINGS = 1, BROWSER_PREVIEW = 2;
     private int screen = HOME;
+    private static final String HOME_STYLE_PREFS = "andarium.red.home.style";
+    private static final String HOME_STYLE_KEY = "reference";
+    private boolean rootCheckRunning = false;
+    private String rootStatusText = "Root: not checked";
     private Bitmap[] designs;
     private SkinView skin;
     private RedNativeDashboard dashboard;
@@ -68,9 +72,10 @@ public final class MainActivity extends Activity {
         // Do not decode multi-megabyte concept artwork during a native HOME startup.
         // Load each reference image only if the user explicitly opens that preview.
         designs = new Bitmap[3];
-        // Native Android widgets are the default, not the static design mockup.
-        dashboard = new RedNativeDashboard(this);
-        setContentView(dashboard);
+        // Reference-matched interactive layout is the first-run choice.
+        // The accessible lightweight native UI remains a persisted option.
+        setHomeStyle(getSharedPreferences(HOME_STYLE_PREFS, MODE_PRIVATE)
+                     .getInt(HOME_STYLE_KEY, 1) == 1, false);
         // Do not execute `su` automatically: that can trigger a superuser prompt.
         // Root status remains unverified until a root permission provider is wired in.
     }
@@ -153,6 +158,7 @@ public final class MainActivity extends Activity {
             if (screen == HOME) {
                 drawRealDeviceStatus(canvas, x, y, scale);
                 drawInstalledState(canvas, x, y, scale);
+                drawHostAppRail(canvas, x, y, scale);
             }
             // The source mockups show root and Android 17 as active. Mask those claims until verified.
             if (!rootVerified || !"17".equals(androidVersion)) {
@@ -168,7 +174,7 @@ public final class MainActivity extends Activity {
                 bg.setColor(Color.rgb(248,80,91));
                 bg.setTextSize(21*sx);
                 bg.setFakeBoldText(true);
-                canvas.drawText(screen == BROWSER_PREVIEW ? "Browser preview only" : "Root: not configured", bx + 10*sx, by + 37*sy, bg);
+                canvas.drawText(screen == BROWSER_PREVIEW ? "Browser preview only" : rootStatusText, bx + 10*sx, by + 37*sy, bg);
                 bg.setColor(Color.rgb(12,12,14));
                 // Cover top rooted badge until native guest root is actually verified.
                 bg.setColor(Color.rgb(12,12,14));
@@ -248,14 +254,49 @@ public final class MainActivity extends Activity {
             }
         }
 
+        /** Actual tap targets drawn over the reference skin, not fake IPA icons.
+         * The Android 17 environment sends a named request to the Nexaris host.
+         */
+        private void drawHostAppRail(Canvas canvas, float x, float y, float scale) {
+            final String[] names = {"Nexaris", "URL OS", "Rap Box", "Rap Keys", "Settings"};
+            final String[] symbols = {"N", "◎", "◇", "⌨", "⚙"};
+            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+            p.setColor(Color.rgb(6, 6, 9));
+            canvas.drawRoundRect(new RectF(x+18*scale, y+1452*scale,
+                x+845*scale, y+1574*scale), 19*scale, 19*scale, p);
+            p.setTextAlign(Paint.Align.CENTER);
+            p.setFakeBoldText(true);
+            for (int i=0; i<names.length; i++) {
+                float cx = x + (i + 0.5f) * 863f / 5f * scale;
+                p.setColor(Color.rgb(242, 43, 67));
+                p.setTextSize(37*scale);
+                canvas.drawText(symbols[i], cx, y+1510*scale, p);
+                p.setColor(Color.WHITE);
+                p.setTextSize(18*scale);
+                canvas.drawText(names[i], cx, y+1545*scale, p);
+            }
+        }
+
         @Override public boolean onTouchEvent(MotionEvent e) {
             if(e.getAction() != MotionEvent.ACTION_UP || !dest.contains(e.getX(),e.getY())) return true;
             float xx=(e.getX()-dest.left)*863/dest.width();
             float yy=(e.getY()-dest.top)*1822/dest.height();
             if(screen==HOME) homeTap(xx,yy);
-            else if(screen==SETTINGS) openNativePanel(RedPanelActivity.SETTINGS_PANEL);
-            else openNativePanel(RedPanelActivity.BROWSER_PANEL);
+            else if(screen==SETTINGS) settingsTap(xx,yy);
+            else browserTap(xx,yy);
             return true;
+        }
+    }
+
+    /** The host executes these native apps; Android never installs or runs an IPA. */
+    void requestHostApp(String route) {
+        if (!HostLaunchWire.allowed(route)) return;
+        try {
+            boolean queued = HostLaunchBridgeProvider.request(this, route);
+            toast(queued ? "Requesting Nexaris host app…" :
+                "A host request is already pending. Open Nexaris to complete it.");
+        } catch (RuntimeException unavailable) {
+            toast("Nexaris host bridge is unavailable in this guest image.");
         }
     }
 
@@ -268,6 +309,16 @@ public final class MainActivity extends Activity {
     private void homeTap(float x,float y) {
         if (y < 185 && x > 670) { menu();return; }
         if (y < 185) { showRuntimeStatus(); return; }
+        if (x > 235 && x < 590 && y >= 515 && y < 615) {
+            checkRootOnUserTap();
+            return;
+        }
+        if (y>=1452 && y<1574) {
+            int index = Math.min(HostLaunchWire.ROUTES.length-1,
+                                 Math.max(0, (int)(x * 5f / 863f)));
+            requestHostApp(HostLaunchWire.ROUTES[index]);
+            return;
+        }
         if (y>625 && y<735) { searchApps();return; }
         if (y>785 && y<1055) {
             if(x<220) launchAny("Titanium", "Chrome", "Browser");
@@ -277,7 +328,10 @@ public final class MainActivity extends Activity {
         } else if(y>1060 && y<1255) {
             if(x<220) launchAny("Termux");
             else if(x<430) openDocuments();
-            else if(x<650) { openNativePanel(RedPanelActivity.SETTINGS_PANEL); }
+            else if(x<650) {
+                if (skin != null) { screen = SETTINGS; skin.invalidate(); }
+                else openNativePanel(RedPanelActivity.SETTINGS_PANEL);
+            }
             else launchAny("App Manager");
         } else if (y>1270 && y<1455 && x<220) launchAny("Heli Keyboard", "Heli");
         else if (y>1580 && y<1780) {
@@ -394,7 +448,7 @@ public final class MainActivity extends Activity {
     }
 
     private void menu() {
-        String[] opts={"Red Android Settings", "Titanium Browser (if installed)", "Browser hub (functional)", "Original Android home selector", "Runtime status", "All installed apps", "View original design mockup", "Native Android home"};
+        String[] opts={"Red Android Settings", "Titanium Browser (if installed)", "Browser hub (functional)", "Original Android home selector", "Runtime status", "All installed apps", "Use exact-reference layout", "Use lightweight native layout", "Check Magisk root (may request permission)"};
         new AlertDialog.Builder(this).setTitle("Twoyi Red")
           .setItems(opts,(d,i)->{
               if(i==0) openNativePanel(RedPanelActivity.SETTINGS_PANEL);
@@ -403,9 +457,52 @@ public final class MainActivity extends Activity {
               if(i==3) safeAction(Settings.ACTION_HOME_SETTINGS);
               if(i==4) showRuntimeStatus();
               if(i==5) showAppDrawer("");
-              if(i==6) { dashboard = null; skin = new SkinView(); setContentView(skin); }
-              if(i==7) { skin = null; dashboard = new RedNativeDashboard(this); setContentView(dashboard); }
+              if(i==6) setHomeStyle(true, true);
+              if(i==7) setHomeStyle(false, true);
+               if(i==8) checkRootOnUserTap();
           }).show();
+    }
+
+    /** Saved UI selection, independent of root/Magisk or the guest image. */
+    private void setHomeStyle(boolean reference, boolean persist) {
+        if (persist) {
+            getSharedPreferences(HOME_STYLE_PREFS, MODE_PRIVATE).edit()
+                .putInt(HOME_STYLE_KEY, reference ? 1 : 0).apply();
+        }
+        if (reference) {
+            dashboard = null;
+            screen = HOME;
+            skin = new SkinView();
+            setContentView(skin);
+        } else {
+            skin = null;
+            dashboard = new RedNativeDashboard(this);
+            setContentView(dashboard);
+        }
+    }
+
+    /** Never claim root from an installed manager. Test only after a tap. */
+    private void checkRootOnUserTap() {
+        if (rootCheckRunning) return;
+        rootCheckRunning = true;
+        rootStatusText = "Checking root…";
+        if (skin != null) skin.invalidate();
+        Thread worker = new Thread(() -> {
+            RedRootProbe.Result result = RedRootProbe.check(RedRootProbe.PROCESS_RUNNER);
+            runOnUiThread(() -> {
+                rootCheckRunning = false;
+                rootVerified = result.root && result.magisk;
+                rootStatusText = rootVerified ? "Magisk root verified" :
+                    result.root ? "UID 0; Magisk not verified" : "Root not granted";
+                if (skin != null) skin.invalidate();
+                new AlertDialog.Builder(this)
+                    .setTitle("Guest root verification")
+                    .setMessage(result.label())
+                    .setPositiveButton("OK", null)
+                    .show();
+            });
+        }, "red-design-root-check");
+        worker.start();
     }
 
     private void launchAny(String... hints) {

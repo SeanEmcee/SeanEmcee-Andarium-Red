@@ -1,0 +1,3 @@
+Andarium Red public Xcode 27 preview retry #4
+Fixes: Pillow-free PNG source checksum/image dimensions, Android proof test fixture newlines, Foundation CGSize field checks.
+No Nexaris workflow or build requested.

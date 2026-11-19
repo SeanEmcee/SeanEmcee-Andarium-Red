@@ -1,0 +1,2 @@
+Andarium Red Xcode 27 iPhoneOS unsigned preview IPA build for LiveContainer import test.
+Real arm64 iPhoneOS app binary. UI-only preview, no Android guest runtime. No Nexaris build.

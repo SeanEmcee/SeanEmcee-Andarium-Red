@@ -1,0 +1,3 @@
+Andarium native full-host compile attempt #3
+Repair: isolated Mesa build PATH includes Homebrew modern Bison/Flex in Python virtualenv.
+No changes to Nexaris. No pretend Android system image.

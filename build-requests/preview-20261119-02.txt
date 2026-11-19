@@ -1,0 +1,3 @@
+Public Xcode 27 Andarium preview retry #2
+Fix in source: macOS Bash 3.2 optional APK array expansion
+Mode: source checks and unsigned AndariumPreview compiler

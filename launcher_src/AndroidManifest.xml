@@ -5,7 +5,52 @@
   <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
   <application android:theme="@android:style/Theme.Material.NoActionBar" android:label="Andarium Red"
       android:usesCleartextTraffic="false" android:allowBackup="true">
+    <!-- Read/ack are shell-UID only; enqueue is the same launcher process UID. -->
+    <provider android:name=".HostLaunchBridgeProvider"
+        android:authorities="dev.twoyi.redlauncher.host"
+        android:exported="true"
+        android:grantUriPermissions="false" />
     <activity android:name=".RedPanelActivity" android:exported="false" />
+    <!-- Five genuine Android launcher identities, but NO Android IPA copies.
+         Aliases dispatch to the same trusted host-only request provider. -->
+    <activity android:name=".HostShortcutActivity"
+        android:exported="false"
+        android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+    <activity-alias android:name=".HostNexaris" android:targetActivity=".HostShortcutActivity"
+        android:exported="true" android:label="Nexaris" android:icon="@drawable/ic_host_nexaris">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity-alias>
+    <activity-alias android:name=".HostURLOS" android:targetActivity=".HostShortcutActivity"
+        android:exported="true" android:label="URL OS" android:icon="@drawable/ic_host_urlos">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity-alias>
+    <activity-alias android:name=".HostRapBox" android:targetActivity=".HostShortcutActivity"
+        android:exported="true" android:label="Rap Box VPN" android:icon="@drawable/ic_host_rapbox">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity-alias>
+    <activity-alias android:name=".HostRapKeys" android:targetActivity=".HostShortcutActivity"
+        android:exported="true" android:label="Rap Keys" android:icon="@drawable/ic_host_rapkeys">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity-alias>
+    <activity-alias android:name=".HostSettings" android:targetActivity=".HostShortcutActivity"
+        android:exported="true" android:label="Nexaris Settings" android:icon="@drawable/ic_host_settings">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity-alias>
     <activity android:name=".MainActivity" android:exported="true" android:configChanges="orientation|screenSize|keyboardHidden">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>

@@ -1,0 +1,3 @@
+Andarium Red PUBLIC native host unsigned compilation request
+Requires reviewed Kernarium source, runtime frameworks and staged accepted Android image.
+This is not a Nexaris build, no signing keys, no actual Android 17 Red guest release.

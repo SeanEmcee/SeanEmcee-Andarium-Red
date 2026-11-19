@@ -15,8 +15,9 @@ from pathlib import Path
 
 import install_source_overlay as guest
 import host_firstboot as firstboot
+import red_runtime_overlay as red
 
-REVIEWED_UPSTREAM = '538de0dddaa0af5779bfbf7bb8e12e0938c3389a'
+REVIEWED_UPSTREAM = 'fbe12ee72d195f0241c4fc24090a98b259026604'
 
 
 def verified_upstream_revision(root: Path) -> str | None:
@@ -75,7 +76,23 @@ def integrate(
                                           termux=kwargs['termux'], fdroid=kwargs['fdroid'],
                                           heliboard=kwargs['heliboard'])
 
+    # A real Kernarium checkout must have every Android/iOS integration file.
+    # Only legacy minimal unit fixtures (which have no .git) may omit host UI.
+    # Xcode project files are also present in minimal test fixtures. Only a
+    # real Git checkout is held to the complete upstream host UI contract;
+    # the independent first-build gate requires the actual pinned Git HEAD.
+    is_real_checkout = (kernarium / '.git').exists()
+    if is_real_checkout and not red.is_complete_checkout(kernarium):
+        raise ValueError('Kernarium host tree incomplete; refusing partial Andarium Red integration')
+    red_preflight = (red.apply(kernarium, source, dry_run=True)
+                     if red.is_complete_checkout(kernarium) else
+                     {'applied': False, 'reason': 'Legacy test fixture has no host UI tree'})
+
     checkout_sha = verified_upstream_revision(kernarium)
+    if is_real_checkout and checkout_sha is not None and checkout_sha != REVIEWED_UPSTREAM:
+        raise ValueError(
+            f'Kernarium revision {checkout_sha} is not the reviewed revision {REVIEWED_UPSTREAM}; '
+            'check out the pinned commit before integrating')
     report = {
         'android_version': 17,
         'upstream_checkout_commit': checkout_sha,
@@ -84,6 +101,7 @@ def integrate(
         'dry_run': dry_run,
         'guest_overlay': guest_preflight,
         'firstboot': host_preflight,
+        'red_display_memory': red_preflight,
         'source_patches_applied': False,
         'ios_archive_built': False,
         'iphone_tested': False,
@@ -106,6 +124,9 @@ def integrate(
                                        appmanager=kwargs['appmanager'],
                                           termux=kwargs['termux'], fdroid=kwargs['fdroid'],
                                           heliboard=kwargs['heliboard'])
+    red_result = (red.apply(kernarium, source, dry_run=False)
+                  if red.is_complete_checkout(kernarium) else red_preflight)
+    report['red_display_memory'] = red_result
     report['guest_overlay'] = overlay_result
     report['firstboot'] = host_result
     report['source_patches_applied'] = True

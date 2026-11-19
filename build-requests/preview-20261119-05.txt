@@ -1,0 +1,1 @@
+Xcode 27 Andarium preview retry #5. Source gate already cleared. Fix: SwiftUI ViewBuilder mode-name switch replaced by pure expression. Do not build Nexaris.

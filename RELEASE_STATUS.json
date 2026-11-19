@@ -1,15 +1,18 @@
 {
   "product": "Andarium Red Android 17",
-  "version": "v14",
-  "build_status": "NO-GO",
+  "version": "v17-dev",
+  "build_status": "NO-GO — SOURCE PREPARED FOR FIRST BUILD; XCODE AND ANDROID 17 NOT YET COMPILED",
   "target6": "DEFERRED",
   "python_tests": {
-    "passed": 139,
-    "total": 139
+    "prior_v14_passed": 139,
+    "prior_v14_total": 139,
+    "current_branch_full_suite_executed": false
   },
   "source_presence": {
-    "passed": 44,
-    "total": 44
+    "prior_v14_passed": 44,
+    "prior_v14_total": 44,
+    "upstream_exact_anchors_verified": 24,
+    "upstream_exact_anchors_total": 24
   },
   "upstream_latest_observed_commit": "fbe12ee72d195f0241c4fc24090a98b259026604",
   "upstream_compatibility_with_latest": "NOT COMPILED; baseline review only, do not infer working Android 17 build",
@@ -29,7 +32,11 @@
     "First-boot installer scans bundled APKs at most once per guest run after a completed scan",
     "In-place upgrade of existing v10 injected first-boot method with no duplicate hook",
     "Bundled launcher APK requires binary AndroidManifest and structurally valid DEX header",
-    "AOT archive-eligible acceptance candidate can be generated only via explicit CLI switch"
+    "AOT archive-eligible acceptance candidate can be generated only via explicit CLI switch",
+    "ANDD policy 22/22 exact Swift compile-and-run checks on Linux; memory default preference 12/12 exact Swift compile-and-run checks. SwiftUI integration remains unbuilt.",
+    "Local bash first_build.sh syntax check and negative-option handling; current GitHub full regression suite has not been run.",
+    "Unsigned-proof package generator and synthetic metadata tests added to repo; actual target-files, GPT disk and assembled proof have not been built or verified here.",
+    "v17 Android→Nexaris host shortcuts source validated: 45/45 exact committed Java route wire, 25/25 exact committed Swift host wire, 17/17 Android-shape stub provider UID/ack cases using exact committed provider."
   ],
   "targets": {
     "1_magisk_managed_root": {
@@ -38,7 +45,7 @@
     },
     "2_native_settings_browser_ui": {
       "state": "INCOMPLETE",
-      "reason": "Native UI source exists but full Android compilation, runtime interaction and visual parity not verified"
+      "reason": "Native widgets and reference artwork sources exist; interactive reference home now defaults with saved native fallback. Android 17 compilation and pixel-by-pixel comparisons still required."
     },
     "3_android17_bidirectional_clipboard": {
       "state": "INCOMPLETE",
@@ -46,11 +53,11 @@
     },
     "4_native_resolution_aot_fast_boot": {
       "state": "INCOMPLETE",
-      "reason": "AOT descriptor candidate now checked by upstream release verifier, but no real artifact, signed native runtime or FPS measurement exists."
+      "reason": "ANDD/custom pixel display source and device-budget RAM profiles present; AOT artifact still not built/accepted, 120-Hz/full-FPS metrics unmeasured."
     },
     "5_apps_heliboard_play_store": {
       "state": "INCOMPLETE",
-      "reason": "Incremental APK bundle upgrades + read-only Swift/Xcode/APK audit implemented. Real guest APK installation, typing, and licensed Play Services remain unverified."
+      "reason": "Six official APK release pins and optional first-build downloads/staging are wired; first-boot installation/typing unverified, Google services not bundled or licensed."
     }
   },
   "ios_ipa_built": false,
@@ -60,23 +67,90 @@
   "additional_targets": {
     "6_nexaris_native_integration": {
       "state": "INCOMPLETE",
-      "reason": "Nexaris native page and runtime adapter interface exist; compiled Android runtime not registered or launched"
+      "reason": "Nexaris has the Andarium Red native screen and runtime protocol; the registry still has no compiled/verified Andarium engine driver."
     },
     "7_stability_and_memory": {
       "state": "INCOMPLETE",
-      "reason": "Historic Twoyi native worker crash diagnosed; no fixed host binary/soak test"
+      "reason": "Device-budget RAM modes and persisted default, frame-size validation and crash-safety value tests in source; no native iPhone jetsam/thermal soak validation yet."
     },
     "8_ios_permissions_privacy": {
       "state": "INCOMPLETE",
-      "reason": "Clipboard source only; camera/microphone/location require authorized, verified host bridges"
+      "reason": "Kernarium upstream already contains user-controlled microphone, camera and foreground location bridges; Andarium Red adds explicit clipboard source. Integration compiled/device consent and data-flow checks are pending."
     },
     "9_persistence_and_firstboot": {
       "state": "INCOMPLETE",
-      "reason": "First boot APK staging regression tests pass, but guest data persistence >7 days not live-tested"
+      "reason": "Kernarium upstream provides instance.json/data disk persistence and update decisions; first-boot APK source hooks exist, but seven-day iPhone persistence not tested."
     },
     "10_signed_distribution_and_livecontainer": {
       "state": "INCOMPLETE",
-      "reason": "No signed IPA, LiveContainer install, or iPhone runtime test"
+      "reason": "First-build script can stage official APKs and a rebuilt Android 17 unsigned proof, then attempt unsigned Xcode compile. No signed IPA, LiveContainer install or iPhone test exists."
+    },
+    "11_android_native_host_app_handoff": {
+      "state": "SOURCE IMPLEMENTED; DEVICE/BINDING UNVERIFIED",
+      "reason": "Five Android HOME launcher controls, UID-gated bounded-wait mailbox, exact event/ack ADB source and native Nexaris overlay crossfade/return-tab setting committed in two private repos. Source Java 45, Swift 25 and provider behavior 17 checks passed. No registered Nexaris-embedded Andarium engine driver, rebuilt guest/IPA, or on-iPhone tap/fade validation."
     }
+  },
+  "first_build_preparation": {
+    "github_branch": "feature/andd-memory-tuning",
+    "reviewed_upstream": "fbe12ee72d195f0241c4fc24090a98b259026604",
+    "development_mode": "source overlay",
+    "configured_andd_mode": "automatic native physical pixel dimensions",
+    "configurable_display": [
+      "andd",
+      "custom-linked",
+      "custom-unlinked",
+      "scaled"
+    ],
+    "persistent_memory_profiles": [
+      "max-quality",
+      "graphics-priority",
+      "high-ram",
+      "device-limit"
+    ],
+    "compiled_local_swift_policy_checks": 22,
+    "compiled_local_swift_memory_preset_checks": 12,
+    "launcher_default": "interactive pixel-reference skin with saved native fallback",
+    "selectable_android_root_probe": "user-initiated, never automatic",
+    "official_apks_fetchable_and_checksum_pinned": [
+      "magisk-manager",
+      "titanium-browser",
+      "app-manager",
+      "termux",
+      "f-droid",
+      "heliboard"
+    ],
+    "android_unsigned_proof_image_configurable": true,
+    "no_github_actions": true,
+    "macos_xcode_compile_completed": false,
+    "android_17_custom_image_completed": false,
+    "signed_ipa_completed": false,
+    "iphone_14_pro_max_device_verified": false,
+    "unsigned_android_proof_packager": "tools/create_unsigned_proof.py",
+    "unsigned_proof_compiled_target_modules_required": [
+      "TwoyiRedLauncher",
+      "TwoyiRedClipboard"
+    ],
+    "unsigned_proof_android17_file_acceptance_tested": false,
+    "ubuntu_x86_64_android_producer_documented": true,
+    "compiled_local_swift_policy_checks_note": "Portable policy source was reconstructed from the GitHub files in a local Swift compiler and 22 focused checks passed; no full iOS target typecheck.",
+    "compiled_local_swift_memory_preset_checks_note": "Portable RAM-profile persistence source reconstructed from GitHub and compiled/tested locally (12 tests).",
+    "android_home_native_host_shortcuts": [
+      "nexaris",
+      "urlos",
+      "rapbox",
+      "rapkeys",
+      "settings"
+    ],
+    "android_host_mailbox": "platform-built launcher ContentProvider, own-UID enqueue, shell/root read/ack",
+    "host_route_wire_protocol": "v1:<32-lowercase-hex>:<five-fixed-targets>",
+    "android_mailbox_wait_ms": 1000,
+    "android_mailbox_pending_ttl_ms": 120000,
+    "nexaris_crossfade_duration_seconds": 0.26,
+    "nexaris_return_tab_policy": "My Device by default, user-configurable previous native tab",
+    "java_host_launch_protocol_checks_passed": 45,
+    "swift_host_launch_protocol_checks_passed": 25,
+    "java_host_mailbox_behavior_checks_passed": 17,
+    "nexaris_andarium_runtime_driver_registered": false,
+    "crossfade_verified_on_iphone": false
   }
 }

@@ -146,7 +146,7 @@ class VerificationTests(unittest.TestCase):
 class DesignAssetTests(unittest.TestCase):
     def test_preserve_three_exact_generated_images(self):
         from hashlib import sha256
-        from PIL import Image
+        import struct
         expected = {
             'home.png':'5e998a1f650c6241a4c1c40cde5182d4263960a0749c2b9b6e0c4e1f07eaa687',
             'settings.png':'385f327af32a272e946fef66a175af00142991ed407756cbb836970243b37b52',
@@ -155,7 +155,10 @@ class DesignAssetTests(unittest.TestCase):
         for name,digest in expected.items():
             p=BASE/'launcher_src/assets'/name
             self.assertEqual(sha256(p.read_bytes()).hexdigest(),digest)
-            with Image.open(p) as im:self.assertEqual(im.size,(863,1822))
+            data = p.read_bytes()[:24]
+            self.assertEqual(data[:8], b"\x89PNG\r\n\x1a\n")
+            self.assertEqual(data[12:16], b"IHDR")
+            self.assertEqual(struct.unpack(">II", data[16:24]), (863, 1822))
 
 if __name__ == "__main__":
     unittest.main()

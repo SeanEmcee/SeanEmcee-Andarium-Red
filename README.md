@@ -1,3 +1,105 @@
+## Build the modified Andarium Red app, not upstream Andarium
+
+The [public Andarium Red repository](https://github.com/SeanEmcee/SeanEmcee-Andarium-Red)
+is the source of **our modified app** on branch `feature/andd-memory-tuning`.
+Kernarium at the reviewed pinned revision is used as a base, then
+`integrate_andarium.py` applies the Android launcher/clipboard and native
+display, RAM and UI changes. Compiling the unchanged upstream app would
+**not** satisfy this project.
+
+**Current verified compiler state (November 19, 2026):** the Xcode 27
+`AndariumPreview` simulator UI compiled successfully in
+[run #44635364654](https://github.com/SeanEmcee/SeanEmcee-Andarium-Red/actions/runs/44635364654).
+That preview is **NOT** an Android emulator and is **NOT** distributed as an IPA.
+The full host build in
+[run #44637111492](https://github.com/SeanEmcee/SeanEmcee-Andarium-Red/actions/runs/44637111492)
+built the pinned GPU/network dependencies but failed because a compatible,
+accepted Android 4 KiB **kernel artifact** was not installed on the runner.
+There is **no finished modified Red Android 17 boot image or installable IPA**.
+
+The [Andarium build workflow](.github/workflows/andarium-first-compile.yml)
+has four modes:
+
+- `source`: source integration and regression tests.
+- `preview`: simulation-only UI smoke, never packaged as an IPA.
+- `host-unsigned`: actual modified full-host compile smoke, but its
+  upstream accepted Android image is not our rebuilt Red guest and will not
+  be published as the Red IPA.
+- `red-ipa`: builds and packages **the full modified Andarium Red iPhoneOS
+  app** only after `guest_proof_run_id` identifies a compiled Red Android 17
+  proof artifact from this repository. The resulting unsigned IPA can be
+  imported into LiveContainer's certificate/signing process for testing;
+  iOS entitlements, JIT, memory and Android boot are still device-dependent.
+
+The actual Android 17 proof needs a separate large x86_64 Linux/Soong
+production run and accepted kernel artifact. Android 17 is bundled inside
+Andarium at build time; creating a guest in the app initializes its Android
+data disk. Installing arbitrary new ROMs later from inside the app would
+require a separately implemented importer. See
+[the LiveContainer/IPA gate](docs/LIVECONTAINER_RED_IPA.md) and
+[the Android 17 proof producer](docs/ANDROID17_PROOF_BUILD.md).
+
+# Andarium Red v17 — Android Home → native Nexaris host applications
+
+**Feature source committed:** The Android HOME now offers five native-host launch shortcuts: **Nexaris, URL OS, Rap Box, Rap Keys, Settings**. These are Android launch controls, not installed IPAs. They use a strict mailbox over the existing authenticated Android ADB bridge. Nexaris mounts the live Android surface above its native shell, then fades Android away to reveal the real native destination. Tapping Nexaris returns to My Device by default or to the previously selected tab if configured.
+
+**Verified policy code:** 45/45 exact Java route checks, 25/25 exact Swift route checks, 17/17 Java mailbox UID/ack checks using Android API stubs. **NOT yet verified:** Xcode build, Android 17 rebuilt guest, registered Nexaris Andarium engine adapter, iPhone frame/timing tests. Current overall build/release gate remains **NO-GO**.
+
+[Android host handoff design and acceptance](docs/ANDROID_HOST_HANDOFF_v17.md) · [Private Nexaris source](https://github.com/SeanEmcee/Nexaris/tree/feature/nexaris-unified-app) · [Andarium source PR #2](https://github.com/SeanEmcee/SeanEmcee-Andarium-Red/pull/2)
+
+---
+
+# Andarium Red v15 — First-build preparation
+
+**Branch:** feature/andd-memory-tuning — [draft PR #2](https://github.com/SeanEmcee/SeanEmcee-Andarium-Red/pull/2).
+
+**Pre-build state:** iOS source integration and first-build tooling are staged, but **no signed IPA, Android 17 image, Xcode compilation, or live iPhone benchmark has been certified**. Do not report runtime parity as complete.
+
+## v15.1 configuration and build improvements (Nov 19, 2026)
+
+- The Android reference-matched AMOLED red HOME is selected on first launch. Its Android Settings actions and app shortcuts are interactive; a **saved menu option** switches back to the lightweight native home, which supports an adaptive Nexaris accent. The static reference art itself is not recolored; no visual pixel-parity claim is made until actual screenshots are compared.
+- Root is checked only on explicit tap using the Android guest's actual `su` and Magisk binaries. No Magisk-managed rooted Android image has been built or booted, so do **not** confuse this check with a functioning Magisk implementation.
+- The preferred RAM profile is now configurable and persistent for **new guests**, separate from the current guest's live RAM selection. Max quality remains the default until changed.
+- Portable Swift resolution-policy source passed 22 behavioral checks and portable Swift memory default settings passed 12 in a Linux Swift 6 harness. These tests verify neither SwiftUI/Xcode linking nor device memory pressure.
+- Kernarium already implements camera, microphone and foreground-location permission toggles and guest-disk persistence. The source preflight now checks those upstream hooks, but it cannot grant iOS access or prove guest bridges without a real build/device.
+- The first-build command accepts `--with-apps` to fetch/checksum-pin the six known official Android apps; `--guest-proof PATH` allows the separately built Android 17 unsigned proof image (for full-build tests).
+
+```bash
+# On an appropriate build machine, after cloning and pinning Kernarium:
+bash scripts/first_build.sh /absolute/path/to/Kernarium --with-apps
+bash scripts/first_build.sh /absolute/path/to/Kernarium --preview
+bash scripts/first_build.sh /absolute/path/to/Kernarium --build --with-apps --guest-proof /absolute/path/to/Android17-proof-release
+```
+
+The unsigned proof image is **an input, not a byproduct of the iOS build script**. It must first be built on an appropriately configured x86_64 Linux Android builder, then packaged with **[tools/create_unsigned_proof.py](tools/create_unsigned_proof.py)** from real compiled Android target-files and a checksummed assembled system disk. See the exact [Android 17 build/proof handoff](docs/ANDROID17_PROOF_BUILD.md). A Mac/Xcode host compilation and signed iPhone tests remain pending. No GitHub Actions are used.
+
+[Detailed v15.1 readiness and blockers](docs/FIRST_BUILD_STATUS_v15.md).
+
+---
+
+## v15 additions
+
+- **ANDD is the new default** on new installs, using physical dimensions from the scene's native display, adjusted to match its orientation. An iPhone 14 Pro Max reports 1290 × 2796 in portrait. Earlier explicit saved scaled modes remain selected when upgrading.
+- **Custom resolution:** numeric width/height, chain toggle that locks the chosen aspect ratio or allows either dimension to be edited independently. Validation rejects unsupported dimensions outside 256–4095 pixels per side, matching Kernarium's EDID guest path; exact valid pixels go through the guest display layout, Metal drawable and touchscreen geometry.
+- **Device memory profiles:** Max quality (within conservative RAM and GPU limits), Graphics priority (tested upstream default), High RAM (safe host line) and Device limit (runtime maximum with warning). Limits follow actual vCPU count, GPU reserve and process memory limits. No entitlement bypass or promised benchmark score.
+- **Reproducible first-build gate:** a pinned upstream Kernarium commit (fbe12ee72d195f0241c4fc24090a98b259026604), fail-closed source patches, Python regression suite and real portable Swift resolution tests. No GitHub Actions required.
+
+## First build, without GitHub Actions
+
+On a Mac with Xcode 27, and a checked-out Kernarium tree at the pinned commit:
+
+```sh
+./scripts/first_build.sh /absolute/path/to/Kernarium
+# Build the iOS settings preview without Android/runtime binaries:
+./scripts/first_build.sh /absolute/path/to/Kernarium --preview
+# Once matching runtime and accepted Android image are available:
+./scripts/first_build.sh /absolute/path/to/Kernarium --build
+```
+
+The optional --build command performs an **unsigned iOS compiler smoke build**, not an IPA installation or a Magisk-rooted guest test. A new Android 17 guest image must be built for the red native launcher and platform clipboard components; an existing upstream accepted image cannot demonstrate these changes. See [docs/ANDD_MEMORY_v15.md](docs/ANDD_MEMORY_v15.md) and [docs/REPOSITORY_AND_BUILD.md](docs/REPOSITORY_AND_BUILD.md).
+
+---
+
 # Andarium Red v14 — source continuation and Nexaris accent handoff
 
 **Release: NO-GO.** This is a complete source handoff built from the prior v13 package, not an Android image or installable IPA. No GitHub Actions, signing or iPhone build was used. [Original and expanded parity targets](docs/ACCEPTANCE_TARGETS.md) • [Private GitHub repository guidance](docs/REPOSITORY_AND_BUILD.md).
