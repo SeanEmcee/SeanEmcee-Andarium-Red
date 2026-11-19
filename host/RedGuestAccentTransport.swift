@@ -27,7 +27,7 @@ enum RedGuestAccentTransport {
         return "am start --user 0 -n \(component) --ei \(extra) \(rgb)"
     }
 
-    static func verify(_ output: String, exitCode: Int32) throws {
+    static func verify(_ output: String, exitCode: Int?) throws {
         guard exitCode == 0 else { throw AccentError.guestRejected }
         let lower = output.lowercased()
         // Android CLI sometimes reports intent/component failures while the
