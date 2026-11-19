@@ -14,7 +14,8 @@
 
 Kernarium runtime currently has a per-device budget that incorporates available process memory under jetsam, iOS native kernel virtual address window, vCPU count, translation cache, engine overhead, graphics memory, and camera memory reserves. Andarium Red uses this **existing authoritative budget** rather than a fictional unlock-all-RAM switch.
 
-- **Max quality** picks largest guest RAM at/below both conservative no-closing-risk bound and graphics headroom line for active vCPU count. Also the default RAM for a new Andarium Red guest created from New VM screen.
+- **Max quality** picks the largest guest RAM at/below both conservative no-closing-risk and graphics headroom limits for the active vCPU count. It is the initial default for new guests, but a new **Default for new guests** menu allows persisting any of the four profiles.
+- **Graphics priority** keeps Kernarium's tested default RAM and protects extra graphics headroom.
 - **High RAM** picks runtime safe guest RAM bound; it may leave fewer graphics resources.
 - **Device limit** picks highest value current runtime admits; explicit warning notes iOS can terminate the app and graphics may run out of memory. This is NOT default.
 - Original CPU and 64 MiB step RAM controls, estimated VRAM and safety warnings remain.
