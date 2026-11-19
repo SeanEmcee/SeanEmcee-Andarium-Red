@@ -214,6 +214,31 @@ def patch_host_runtime(original: str) -> str:
     return patched.replace(marker, marker + '\n\n' + provision_method, 1)
 
 
+def patch_guest_accent_runtime(original: str) -> str:
+    """Add a checked Android-launcher RGB handoff to a real guest ADB runtime.
+
+    This source hook is deliberately separate from the clipboard patch: it can
+    be safely applied when clipboard integration already exists. The method
+    is not a Nexaris runtime adapter and cannot boot an Android guest.
+    """
+    marker = '    // MARK: Android operations'
+    signature = '    func redApplyAccentRGB(_ rgb: UInt32) async throws {'
+    if signature in original:
+        return original
+    if marker not in original or 'private var operations: AdbGuestOperations' not in original:
+        raise ValueError('Upstream LiveRuntime.swift Android operations interface changed')
+    addition = '''    /// Send a checked 24-bit RGB on an explicit Android launcher transition.
+    /// This starts the guest launcher; do not use as a silent background sync.
+    func redApplyAccentRGB(_ rgb: UInt32) async throws {
+        let command = try RedGuestAccentTransport.command(rgb: rgb)
+        let output = try await operations.shell(command, limit: .seconds(15))
+        try RedGuestAccentTransport.verify(output.text, exitCode: output.exitCode)
+    }
+
+'''
+    return original.replace(marker, marker + '\n\n' + addition, 1)
+
+
 def patch_native_resolution_default(original: str) -> str:
     """Use the host screen's actual native scale for a fresh guest only.
 
@@ -280,7 +305,7 @@ def plan_host(root: Path) -> dict:
     session = live / 'SessionView.swift'
     if not runtime.is_file() or not session.is_file():
         raise ValueError('Andarium host runtime source unavailable')
-    return {runtime: patch_host_runtime(runtime.read_text()),
+    return {runtime: patch_guest_accent_runtime(patch_host_runtime(runtime.read_text())),
             session: patch_session_view(session.read_text())}
 
 
@@ -383,7 +408,8 @@ def apply(root: Path, source: Path, magisk_apk: Path | None, dry_run: bool,
         for target, content in host_patch.items():
             target.write_text(content)
         host_dest = root / 'Andarium/Andarium/Live'
-        for fname in ('RedClipboardCodec.swift', 'RedClipboardControls.swift'):
+        for fname in ('RedClipboardCodec.swift', 'RedClipboardControls.swift',
+                      'RedGuestAccentTransport.swift'):
             shutil.copy2(Path(__file__).resolve().parent / 'host' / fname, host_dest / fname)
     if t_report:
         tdir = dest / 'titanium'
