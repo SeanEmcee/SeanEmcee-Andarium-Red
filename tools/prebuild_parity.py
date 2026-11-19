@@ -193,6 +193,13 @@ def inspect(root: Path = ROOT, kernarium: Path | None = None) -> dict:
         and 'Math.min(4, availablePixels / desiredCellPixels)' in grid_logic
         and 'if (dashboard != null) dashboard.refresh()' in launcher,
         'Responsive widget grid source; 2,006 arithmetic assertions pass locally; real Android appearance untested')
+    add('Two-stage guest data persistence acceptance is available',
+        'def create_persistence_marker(adb: str)' in live_check
+        and 'def verify_persistence_marker(adb: str, expected: str)' in live_check
+        and 'PERSISTENCE_TOKEN.fullmatch(expected)' in live_check
+        and '--create-persistence-marker' in live_check
+        and '--check-persistence-marker' in live_check,
+        'Opt-in marker source and mocked tests; persistence through actual iOS relaunch/update/7 days unverified')
     add('Explicit clipboard signature permission check',
         'def clipboard_privilege(' in live_check
         and 'READ_CLIPBOARD_IN_BACKGROUND' in live_check,
