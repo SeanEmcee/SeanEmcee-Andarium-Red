@@ -43,7 +43,7 @@ def run(command: list[str], *, cwd: Path, timeout: int = 240) -> tuple[bool, str
         p = subprocess.run(command, cwd=cwd, capture_output=True, text=True,
                            timeout=timeout, check=False)
         result = (p.stdout + "\n" + p.stderr).strip()
-        return p.returncode == 0, result[-2800:]
+        return p.returncode == 0, result[-16000:] if p.returncode else result[-2800:]
     except (OSError, subprocess.TimeoutExpired) as exc:
         return False, str(exc)
 
