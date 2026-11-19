@@ -21,6 +21,17 @@ python -m pip install --disable-pip-version-check --upgrade pip
 python -m pip install --disable-pip-version-check 'meson>=1.4,<2' mako packaging PyYAML
 
 export PATH="$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$(brew --prefix gettext)/bin:$PATH"
+# Upstream's Mesa builder deliberately invokes env -i with a narrow PATH:
+# Python venv bin + Meson bin + Ninja bin + system tools. On macOS,
+# /usr/bin/bison is ancient and cannot parse the pinned Mesa grammar.
+# Place the real Homebrew executables inside that existing trusted venv/bin,
+# not fake generated C or patched third-party parser sources.
+ln -sfn "$(brew --prefix bison)/bin/bison" .build/gpu-tools-venv/bin/bison
+ln -sfn "$(brew --prefix flex)/bin/flex" .build/gpu-tools-venv/bin/flex
+(
+  env -i PATH="$PWD/.build/gpu-tools-venv/bin:/usr/bin:/bin" bison --version
+  env -i PATH="$PWD/.build/gpu-tools-venv/bin:/usr/bin:/bin" flex --version
+)
 export UML_APPLE_GPU_DEPENDENCY_JOBS=4
 export UML_IOS_NETWORK_DEPENDENCY_JOBS=4
 export UML_IOS_STORAGE_DEPENDENCY_JOBS=4
