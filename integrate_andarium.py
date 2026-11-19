@@ -78,8 +78,10 @@ def integrate(
 
     # A real Kernarium checkout must have every Android/iOS integration file.
     # Only legacy minimal unit fixtures (which have no .git) may omit host UI.
-    is_real_checkout = (kernarium / '.git').exists() or (
-        kernarium / 'Andarium/Andarium.xcodeproj/project.xcproj').is_file()
+    # Xcode project files are also present in minimal test fixtures. Only a
+    # real Git checkout is held to the complete upstream host UI contract;
+    # the independent first-build gate requires the actual pinned Git HEAD.
+    is_real_checkout = (kernarium / '.git').exists()
     if is_real_checkout and not red.is_complete_checkout(kernarium):
         raise ValueError('Kernarium host tree incomplete; refusing partial Andarium Red integration')
     red_preflight = (red.apply(kernarium, source, dry_run=True)
