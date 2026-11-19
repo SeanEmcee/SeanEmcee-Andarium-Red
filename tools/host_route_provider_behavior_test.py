@@ -56,6 +56,26 @@ public class ContentResolver {
   return new dev.twoyi.redlauncher.HostLaunchBridgeProvider().call(method,arg,extras);
  }
 }""",
+"android/app/Activity.java": """package android.app;
+public class Activity extends android.content.Context {
+ protected void onCreate(android.os.Bundle state){}
+ public android.content.Intent getIntent(){return null;}
+ public void finish(){}
+}""",
+"android/content/ComponentName.java": """package android.content;
+public class ComponentName {
+ public String getClassName(){return "";}
+}""",
+"android/content/Intent.java": """package android.content;
+public class Intent {
+ public ComponentName getComponent(){return null;}
+}""",
+"android/widget/Toast.java": """package android.widget;
+public class Toast {
+ public static final int LENGTH_LONG=1;
+ public static Toast makeText(android.content.Context context,String text,int duration){return new Toast();}
+ public void show(){}
+}""",
 "android/content/ContentValues.java": "package android.content; public class ContentValues {}",
 "android/database/Cursor.java": "package android.database; public interface Cursor {}",
 "android/net/Uri.java": """package android.net;
@@ -111,6 +131,19 @@ public final class HostLaunchProviderHarness {
   Binder.setUid(0);
   ok("urlos".equals(HostLaunchWire.eventRoute(field(p,"next",null,"event"))),
      "root ADB reader can inspect");
+  ok("nexaris".equals(HostShortcutActivity.routeForAlias("dev.twoyi.redlauncher.HostNexaris")),
+     "Nexaris Android launcher alias routes to iOS host");
+  ok("urlos".equals(HostShortcutActivity.routeForAlias("dev.twoyi.redlauncher.HostURLOS")),
+     "URL OS Android launcher alias routes to iOS host");
+  ok("rapbox".equals(HostShortcutActivity.routeForAlias("dev.twoyi.redlauncher.HostRapBox")),
+     "Rap Box Android launcher alias routes to iOS host");
+  ok("rapkeys".equals(HostShortcutActivity.routeForAlias("dev.twoyi.redlauncher.HostRapKeys")),
+     "Rap Keys Android launcher alias routes to iOS host");
+  ok("settings".equals(HostShortcutActivity.routeForAlias("dev.twoyi.redlauncher.HostSettings")),
+     "Nexaris Settings Android launcher alias routes to iOS host");
+  ok(HostShortcutActivity.routeForAlias("dev.twoyi.redlauncher.Evil") == null,
+     "untrusted Android launcher alias is rejected");
+  ok(HostShortcutActivity.routeForAlias(null) == null, "missing Android alias is rejected");
   ok("unknown_method".equals(field(p,"other",null,"status")),"unknown operation rejected");
   System.out.println("HOST_LAUNCH_PROVIDER_"+checks+"_PASS");
  }
@@ -125,7 +158,7 @@ def run():
             dest=root/name;dest.parent.mkdir(parents=True,exist_ok=True)
             dest.write_text(text)
         sources=[*root.rglob("*.java"),
-                 JAVA/"HostLaunchWire.java", JAVA/"HostLaunchBridgeProvider.java"]
+                 JAVA/"HostLaunchWire.java", JAVA/"HostLaunchBridgeProvider.java", JAVA/"HostShortcutActivity.java"]
         p=subprocess.run(["javac","-d",str(root/"classes"),
                           *(str(s) for s in sources)],capture_output=True,text=True)
         if p.returncode:
