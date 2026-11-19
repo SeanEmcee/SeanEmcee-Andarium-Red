@@ -19,10 +19,11 @@ cd ..
 
 # From the Andarium Red private source checkout:
 bash scripts/first_build.sh /absolute/path/to/Kernarium
+bash scripts/first_build.sh /absolute/path/to/Kernarium --preview
 bash scripts/first_build.sh /absolute/path/to/Kernarium --build
 ```
 
-The first command applies and tests the host/guest source overlays without compiling a runtime. The second additionally packages the iOS runtime, stages an already accepted Android release and asks Xcode to attempt a **non-signed Release compile**, not a device install. If accepted image/runtime artifacts or Mac/Xcode are missing, the workflow exits with the failing prerequisite. Do not mark it green from source checks alone.
+The first command applies and tests the host/guest source overlays without compiling a runtime. The --preview command compiles the mock SwiftUI screens without a guest image. The --build command additionally packages the iOS runtime, stages an already accepted Android release and asks Xcode to attempt a **non-signed Release compile**, not a device install. If accepted image/runtime artifacts or Mac/Xcode are missing, the workflow exits with the failing prerequisite. Do not mark it green from source checks alone.
 
 The native Android Red launcher, privileged clipboard provider and any root integration need a *new* Android 17 image built on an appropriate Android build machine, then staged via upstream's unsigned-proof procedure for development. An upstream release image will not contain the modified guest modules. Actual signed-device tests, Magisk-managed root, AOT performance and full parity remain separate gates.
 
