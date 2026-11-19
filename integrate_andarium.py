@@ -17,7 +17,7 @@ import install_source_overlay as guest
 import host_firstboot as firstboot
 import red_runtime_overlay as red
 
-REVIEWED_UPSTREAM = '538de0dddaa0af5779bfbf7bb8e12e0938c3389a'
+REVIEWED_UPSTREAM = 'fbe12ee72d195f0241c4fc24090a98b259026604'
 
 
 def verified_upstream_revision(root: Path) -> str | None:
@@ -76,14 +76,21 @@ def integrate(
                                           termux=kwargs['termux'], fdroid=kwargs['fdroid'],
                                           heliboard=kwargs['heliboard'])
 
-    # Synthetic test fixtures can omit the iOS presentation tree. A genuine
-    # Kernarium checkout has all host sources; do not fake a successful host
-    # integration when files are missing.
+    # A real Kernarium checkout must have every Android/iOS integration file.
+    # Only legacy minimal unit fixtures (which have no .git) may omit host UI.
+    is_real_checkout = (kernarium / '.git').exists() or (
+        kernarium / 'Andarium/Andarium.xcodeproj/project.xcproj').is_file()
+    if is_real_checkout and not red.is_complete_checkout(kernarium):
+        raise ValueError('Kernarium host tree incomplete; refusing partial Andarium Red integration')
     red_preflight = (red.apply(kernarium, source, dry_run=True)
                      if red.is_complete_checkout(kernarium) else
-                     {'applied': False, 'reason': 'Incomplete host tree; source overlay not applied'})
+                     {'applied': False, 'reason': 'Legacy test fixture has no host UI tree'})
 
     checkout_sha = verified_upstream_revision(kernarium)
+    if is_real_checkout and checkout_sha is not None and checkout_sha != REVIEWED_UPSTREAM:
+        raise ValueError(
+            f'Kernarium revision {checkout_sha} is not the reviewed revision {REVIEWED_UPSTREAM}; '
+            'check out the pinned commit before integrating')
     report = {
         'android_version': 17,
         'upstream_checkout_commit': checkout_sha,
