@@ -1,3 +1,28 @@
+# Andarium Red v15 — incremental source hardening (development branch)
+
+**Release: NO-GO.** This branch continues the v14 source handoff; it does **not** contain a completed Android image, Magisk-booted guest, working Nexaris Android runtime adapter, AOT acceptance measurement, or signed iOS app. Source changes are not a declaration of 100% functional parity. GitHub Actions and app builds have not been run.
+
+## v15 changes
+
+- **Root-check reliability:** The Java `ProcessBuilder` runner drains child stdout/stderr while the process is alive, rather than waiting first and risking a full-pipe deadlock. Output is strictly bounded to 1 KiB, overflow is rejected, and the 15-second process timeout is preserved. An executable Java harness now covers 10 checks, including a 200 KiB child-output flood that passes locally.
+- **Crash containment:** Native Android HOME, dashboard, Settings, and browser paths handle Android security-denied app launches and settings intents with user-visible fallback messages. They do not falsely claim an unavailable app is working.
+- **Theme parity:** The guest launcher fallback color now equals Nexaris's native Crimson preset (`0xF22B43`). A separate Nexaris parity branch preserves the most recent selected RGB while no driver exists and replays the value when a genuine engine registers.
+- **Regression coverage added:** `tests/test_v15_root_process.py` and `tests/test_v15_android_intent_safety.py` exercise the Java root harness and native Android stub compilation. Full repository/Android 17/device verification has not been run from this environment.
+
+### Source verification commands (no GitHub Actions)
+
+```sh
+python3 -m unittest discover -s tests -q
+python3 tools/root_probe_java_test.py
+python3 tools/accent_store_behavior_test.py
+python3 tools/native_home_stub_compile.py
+python3 tools/android_panel_stub_compile.py
+```
+
+The original five functional acceptance targets and five additional Nexaris/stability/privacy/persistence/distribution targets remain **unverified on device**. Refer to [acceptance targets](docs/ACCEPTANCE_TARGETS.md) and the v14 baseline [release status](RELEASE_STATUS.json). The previous v14 count of 139 Python tests must not be reused as a v15 full-suite result.
+
+---
+
 # Andarium Red v14 — source continuation and Nexaris accent handoff
 
 **Release: NO-GO.** This is a complete source handoff built from the prior v13 package, not an Android image or installable IPA. No GitHub Actions, signing or iPhone build was used. [Original and expanded parity targets](docs/ACCEPTANCE_TARGETS.md) • [Private GitHub repository guidance](docs/REPOSITORY_AND_BUILD.md).
