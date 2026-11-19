@@ -1,0 +1,7 @@
+Host unsigned validation round r3.
+Pin Kernarium fbe12ee72d195f0241c4fc24090a98b259026604.
+Fixes Mesa ARM64 iOS little/big endian cross-file matcher; keep actual GPU driver build and all checks.
+Compile real 4KiB ARM64 Kernel and require ABI29 verifier.
+Require host WiFi/cellular status relay and Android Settings provider Java tests.
+Check exact Android17 target-files proof producer and diagnostic SU verification.
+No signing, no fake release, no Nexaris modifications.
