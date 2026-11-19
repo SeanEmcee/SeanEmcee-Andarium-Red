@@ -112,6 +112,15 @@ def inspection(kernarium: Path, *, source: Path = ROOT, require_artifacts: bool 
         add(f"Native {name.lower()} permission setting retained",
             model_hook in model_text and ui_hook in home_text,
             "iOS authorization is still granted and exercised only on a device")
+    xcode_config = project.read_text() if found_project else ""
+    for name, key in (
+        ("Camera", "INFOPLIST_KEY_NSCameraUsageDescription"),
+        ("Microphone", "INFOPLIST_KEY_NSMicrophoneUsageDescription"),
+        ("Location", "INFOPLIST_KEY_NSLocationWhenInUseUsageDescription"),
+    ):
+        add(f"{name} iOS privacy purpose string configured",
+            key in xcode_config,
+            "iOS will not permit host capture without the corresponding usage description")
     add("Camera boot setting connected to runtime",
         "cameraBootMode()" in live_text and "android_camera_mode" in live_text)
     add("Foreground location runtime connected",
