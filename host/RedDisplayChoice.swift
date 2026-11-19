@@ -17,7 +17,7 @@ struct RedResolutionSetting: Codable, Equatable {
     private(set) var ratioHeight = 1920
 
     static let minimumSide = 256
-    static let maximumSide = 8192
+    static let maximumSide = 4095
     static let maximumPixels = 16_777_216
 
     var customIsValid: Bool {
@@ -31,8 +31,13 @@ struct RedResolutionSetting: Codable, Equatable {
     func pixels(native: CGSize?) -> CGSize? {
         switch mode {
         case .andd:
-            guard let native, native.width > 0, native.height > 0,
-                  native.width.isFinite, native.height.isFinite else { return nil }
+            guard let native, native.width.isFinite, native.height.isFinite,
+                  native.width >= CGFloat(Self.minimumSide),
+                  native.height >= CGFloat(Self.minimumSide),
+                  native.width <= CGFloat(Self.maximumSide),
+                  native.height <= CGFloat(Self.maximumSide),
+                  native.width <= CGFloat(Self.maximumPixels) / native.height
+            else { return nil }
             return CGSize(width: native.width.rounded(), height: native.height.rounded())
         case .custom:
             guard customIsValid else { return nil }
@@ -44,7 +49,10 @@ struct RedResolutionSetting: Codable, Equatable {
 
     mutating func seedFromNative(_ native: CGSize?) {
         guard let native, native.width.isFinite, native.height.isFinite,
-              native.width >= 1, native.height >= 1 else { return }
+              native.width >= CGFloat(Self.minimumSide),
+              native.height >= CGFloat(Self.minimumSide),
+              native.width <= CGFloat(Self.maximumSide),
+              native.height <= CGFloat(Self.maximumSide) else { return }
         let w = Int(native.width.rounded()), h = Int(native.height.rounded())
         guard w >= Self.minimumSide, h >= Self.minimumSide,
               w <= Self.maximumSide, h <= Self.maximumSide,
