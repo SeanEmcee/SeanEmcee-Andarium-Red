@@ -134,8 +134,9 @@ public final class RedPanelActivity extends Activity {
         row("Guest status", "Build: " + Build.DISPLAY + "  •  Security patch: " + Build.VERSION.SECURITY_PATCH
             + "  •  Tap to check actual root", v -> rootInfo());
         heading("Host wireless");
-        row("iPhone Wi-Fi", "Android uses the host's network; nearby iPhone Wi-Fi scan unavailable",
-            v -> hostWifiInfo());
+        String route = hostTransport();
+        row("iPhone connection", RedHostTransportStatus.title(route)
+            + " — " + RedHostTransportStatus.detail(route), v -> hostWifiInfo());
         row("iPhone Bluetooth", "Host permission required; guest has no direct Bluetooth radio",
             v -> hostBluetoothInfo());
         heading("Android Settings");
@@ -163,9 +164,25 @@ public final class RedPanelActivity extends Activity {
                 .setPositiveButton("OK", null).show());
     }
 
+    private String hostTransport() {
+        try {
+            Bundle response = getContentResolver().call(
+                Uri.parse("content://dev.twoyi.redlauncher.hostnetwork/state"),
+                "get", null, null);
+            if (response == null) return RedHostTransportStatus.UNKNOWN;
+            String value = response.getString("transport");
+            return RedHostTransportStatus.isHostValue(value)
+                ? value : RedHostTransportStatus.UNKNOWN;
+        } catch (RuntimeException unavailable) {
+            return RedHostTransportStatus.UNKNOWN;
+        }
+    }
+
     private void hostWifiInfo() {
-        new AlertDialog.Builder(this).setTitle("iPhone Wi-Fi")
-            .setMessage("The Android guest reaches the network through the iOS host. Its virtual Wi-Fi adapter is not an independent physical radio. iOS does not expose a general nearby Wi-Fi scan to third-party apps. Select available networks in the iPhone's Wi-Fi Settings; do not interpret the Android virtual SSID as a physical hotspot.")
+        String route = hostTransport();
+        new AlertDialog.Builder(this).setTitle(RedHostTransportStatus.title(route))
+            .setMessage(RedHostTransportStatus.detail(route)
+                + "\n\nAndroid's VirtWifi remains an INTERNAL software transport, not the iPhone's actual Wi-Fi radio. Its user-mode network follows the host's Wi-Fi or cellular path without disconnecting Android's apps. This screen cannot switch the iPhone's hardware Wi-Fi on/off, list nearby SSIDs, or impersonate a cellular modem. Use iPhone Settings to change the phone's connection.")
             .setPositiveButton("OK", null).show();
     }
 
