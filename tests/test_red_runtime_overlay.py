@@ -5,6 +5,8 @@ iOS compile, Android boot, graphics FPS, or physical-device validation.
 """
 import tempfile
 import unittest
+import shutil
+import subprocess
 from pathlib import Path
 
 import red_runtime_overlay as red
@@ -171,6 +173,25 @@ class RedRuntimeOverlayTests(unittest.TestCase):
         self.assertIn("func setLinked(_ on: Bool)", source)
         self.assertIn("maximumPixels = 16_777_216", source)
         self.assertIn("maximumSide = 4095", source)
+
+
+    def test_actual_swift_policy_compiles_and_runs(self):
+        compiler = shutil.which("swiftc")
+        if compiler is None:
+            self.skipTest("Swift compiler unavailable; first_build_gate requires it")
+        with tempfile.TemporaryDirectory() as build:
+            program = Path(build) / "red-resolution-policy-test"
+            source = self.source / "host/RedDisplayChoice.swift"
+            harness = self.source / "tests/RedResolutionValuesHarness.swift"
+            compile_ = subprocess.run([compiler, str(source), str(harness), "-o",
+                                       str(program)], capture_output=True, text=True,
+                                      timeout=90)
+            self.assertEqual(compile_.returncode, 0, compile_.stderr)
+            checked = subprocess.run([str(program)], capture_output=True, text=True,
+                                     timeout=30)
+            self.assertEqual(checked.returncode, 0, checked.stderr)
+            self.assertIn("ANDD_VALUE_HARNESS_", checked.stdout)
+            self.assertIn("_PASS", checked.stdout)
 
 
 if __name__ == "__main__":
