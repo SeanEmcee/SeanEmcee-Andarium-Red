@@ -55,6 +55,41 @@ class AndroidHostLaunchTests(unittest.TestCase):
         self.assertIn("owner.requestHostApp(route)", dashboard)
         self.assertIn("NEXARIS HOST APPS", dashboard)
 
+    def test_five_android_launcher_aliases_are_real_and_prewired(self):
+        manifest = ET.parse(ROOT / "launcher_src/AndroidManifest.xml")
+        ns = "{http://schemas.android.com/apk/res/android}"
+        expected = {
+            ".HostNexaris": "nexaris",
+            ".HostURLOS": "urlos",
+            ".HostRapBox": "rapbox",
+            ".HostRapKeys": "rapkeys",
+            ".HostSettings": "settings",
+        }
+        aliases = manifest.findall(".//activity-alias")
+        self.assertEqual({a.get(ns + "name") for a in aliases}, set(expected))
+        declared = {a.get(ns + "name") for a in manifest.findall(".//activity")}
+        self.assertIn(".HostShortcutActivity", declared)
+        for alias in aliases:
+            self.assertEqual(alias.get(ns + "targetActivity"), ".HostShortcutActivity")
+            self.assertEqual(alias.get(ns + "exported"), "true")
+            filters = alias.findall("intent-filter")
+            self.assertEqual(len(filters), 1)
+            actions = {a.get(ns + "name") for a in filters[0].findall("action")}
+            categories = {c.get(ns + "name") for c in filters[0].findall("category")}
+            self.assertIn("android.intent.action.MAIN", actions)
+            self.assertIn("android.intent.category.LAUNCHER", categories)
+            icon = alias.get(ns + "icon")
+            self.assertTrue(icon and icon.startswith("@drawable/ic_host_"))
+            self.assertTrue((ROOT / "launcher_src/res/drawable" /
+                             (icon.removeprefix("@drawable/") + ".xml")).is_file())
+        activity = (JAVA / "HostShortcutActivity.java").read_text()
+        self.assertIn("HostLaunchBridgeProvider.request(this, route)", activity)
+        self.assertIn("component.getClassName()", activity)
+        self.assertIn("finish();", activity)
+        self.assertNotIn("getStringExtra", activity)
+        for alias, route in expected.items():
+            self.assertIn(alias[1:] + '\": return \"' + route + '\"', activity)
+
     def test_overlay_includes_host_transport_source(self):
         integration = (ROOT / "install_source_overlay.py").read_text()
         self.assertIn("RedHostRouteRuntime.swift", integration)
