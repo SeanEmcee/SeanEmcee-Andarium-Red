@@ -222,7 +222,8 @@ def patch_native_resolution_default(original: str) -> str:
     """
     old = 'model.chosenScale = DisplayOptionsStore.load().chosenScale'
     new = 'model.chosenScale = DisplayOptionsStore.load().chosenScale ?? .native'
-    if new in original:
+    if new in original or ('let redSavedDisplay = DisplayOptionsStore.load()' in original
+                           and 'model.redResolutionSetting' in original):
         return original
     if old not in original:
         raise ValueError('Upstream AppEntry.swift resolution initializer changed')
