@@ -265,6 +265,219 @@ PROJECT_PATH_RE = re.compile(r'\{ "path": "([^"\n]+)", "target-membership": '
                              r'\[ "Andarium/resources" \] \}')
 
 
+
+CUSTOM_LAUNCHER_MARKER = '        // RED_CUSTOM_PACKAGES'
+CUSTOM_LAUNCHER_ENTRY = re.compile(
+    r'^[ \t]*Package\(filename:\s*"TwoyiRedLauncher\.apk",\s*'
+    r'androidPackage:\s*"dev\.twoyi\.redlauncher",\s*'
+    r'expectedBytes:\s*[0-9_]+,\s*expectedSHA256:\s*"[0-9a-f]{64}"\),?[ \t]*
+    if PROJECT_ANCHOR not in original:
+        raise ValueError('Andarium Xcode JSON project resource anchor changed')
+    if len(packages) != len(set(packages)) or any(name not in BUNDLE_ORDER for name in packages):
+        raise ValueError('Duplicate or unknown bundled APK resource requested')
+    packages = [name for name in BUNDLE_ORDER if name in packages]
+    children = ',\n'.join(
+        f'      {{ "path": "{name}", "target-membership": [ "Andarium/resources" ] }}'
+        for name in packages)
+    group = ('    { "kind": "group", "name": "Red Bundled APKs", '
+             '"path": "Andarium/RedBundledAPKs", "children": [\n'
+             + children + '\n    ] },')
+    existing = PROJECT_GROUP_RE.search(original)
+    if existing:
+        raw_children = existing.group('children')
+        entries = PROJECT_PATH_RE.findall(raw_children)
+        # Refuse unrecognized JSON5 elements or a duplicate resource entry.
+        residue = PROJECT_PATH_RE.sub('', raw_children).replace(',', '').strip()
+        if residue or len(entries) != len(set(entries)) or any(x not in BUNDLE_ORDER for x in entries):
+            raise ValueError('Existing Red APK group has unexpected or duplicate resources')
+        if not set(entries).issubset(packages):
+            raise ValueError('Existing Red APK group contains resources missing from staged bundle')
+        return original[:existing.start()] + group + original[existing.end():]
+    if '"name": "Red Bundled APKs"' in original:
+        raise ValueError('Existing Red APK resource group has an unexpected structure')
+    return original.replace(PROJECT_ANCHOR, PROJECT_ANCHOR + '\n' + group, 1)
+
+
+def verify_launcher(apk: Path) -> dict:
+    if not apk.is_file():
+        raise ValueError(f'Launcher APK missing: {apk}')
+    with zipfile.ZipFile(apk) as z:
+        names = z.namelist()
+        if 'AndroidManifest.xml' not in names or 'classes.dex' not in names:
+            raise ValueError('Launcher must be a compiled APK with a manifest and DEX classes')
+        if z.testzip() is not None:
+            raise ValueError('Launcher APK ZIP integrity check failed')
+    # A ZIP with dummy entries is not a compiled Android app. Validate the
+    # minimum structure of AAPT's binary manifest and a real DEX header;
+    # signing and package identity are checked by Android at install time.
+    with zipfile.ZipFile(apk) as z:
+        manifest = z.read('AndroidManifest.xml')
+        dex = z.read('classes.dex')
+    if not manifest.startswith(b'\x03\x00\x08\x00') or len(manifest) < 8:
+        raise ValueError('Launcher must contain a compiled binary AndroidManifest.xml')
+    if (len(dex) < 112 or dex[:4] != b'dex\n' or dex[4:7] not in
+            (b'035', b'037', b'038', b'039', b'040', b'041') or dex[7] != 0 or
+            int.from_bytes(dex[32:36], 'little') != len(dex) or
+            int.from_bytes(dex[36:40], 'little') != 112 or
+            int.from_bytes(dex[40:44], 'little') != 0x12345678):
+        raise ValueError('Launcher must contain a compiled Android DEX image')
+    hasher = hashlib.sha256()
+    with apk.open('rb') as file:
+        for chunk in iter(lambda: file.read(1024 * 1024), b''):
+            hasher.update(chunk)
+    digest = hasher.hexdigest()
+    return {'file': apk.name, 'bytes': apk.stat().st_size, 'sha256': digest,
+            'note': 'Launcher must be built from our checked Android 17 source; APK package identity needs device verification'}
+
+
+def stage(root: Path, source_dir: Path, magisk: Path | None, titanium: Path | None,
+          dry_run: bool = False, launcher: Path | None = None,
+          appmanager: Path | None = None, termux: Path | None = None,
+          fdroid: Path | None = None, heliboard: Path | None = None) -> dict:
+    live = root / 'Andarium/Andarium/Live/LiveRuntime.swift'
+    project = root / 'Andarium/Andarium.xcodeproj/project.xcproj'
+    if not live.is_file() or not project.is_file():
+        raise ValueError('Not a matching Andarium iOS source checkout')
+    swift_path = source_dir / 'host/RedGuestApkInstaller.swift'
+    if not swift_path.is_file():
+        raise ValueError('Missing streaming hash implementation')
+    inputs = []
+    if launcher:
+        meta = verify_launcher(launcher)
+        inputs.append(('TwoyiRedLauncher.apk', launcher, meta))
+    if magisk:
+        meta = validate_apk(magisk)
+        inputs.append(('Magisk-v31.1.apk', magisk, meta))
+    if titanium:
+        meta = validate_titanium(titanium)
+        inputs.append(('Titanium-v157.apk', titanium, meta))
+    if appmanager:
+        meta = validate_appmanager(appmanager)
+        inputs.append(('AppManager-v4.1.1.apk', appmanager, meta))
+    if termux:
+        meta = validate_termux(termux)
+        inputs.append(('Termux-v0.118.3-arm64.apk', termux, meta))
+    if fdroid:
+        meta = validate_fdroid(fdroid)
+        inputs.append(('FDroid-v2.0.1.apk', fdroid, meta))
+    if heliboard:
+        meta = validate_heliboard(heliboard)
+        inputs.append(('HeliBoard-v4.2-release.apk', heliboard, meta))
+    target = root / 'Andarium/RedBundledAPKs'
+    input_by_name = {name: (path, meta) for name, path, meta in inputs}
+    existing_files: dict[str, Path] = {}
+    if target.exists():
+        if target.is_symlink() or not target.is_dir():
+            raise ValueError('Existing Red APK bundle is not a real directory')
+        for path in target.iterdir():
+            if path.name not in BUNDLE_ORDER:
+                raise ValueError('Existing Red APK bundle contains unknown resource: ' + path.name)
+            validate_existing(path.name, path)
+            existing_files[path.name] = path
+    if not inputs and not existing_files:
+        raise ValueError('Supply at least one officially verified APK; do not include placeholders')
+    # An add-on update keeps all existing pinned assets; conflicting input is
+    # rejected even when its checksum was valid for a different version.
+    for name, (input_path, _) in input_by_name.items():
+        if name in existing_files:
+            def digest(path: Path) -> str:
+                h = hashlib.sha256()
+                with path.open('rb') as stream:
+                    for chunk in iter(lambda: stream.read(1 << 20), b''):
+                        h.update(chunk)
+                return h.hexdigest()
+            if digest(input_path) != digest(existing_files[name]):
+                raise ValueError('Existing bundled APK differs from requested file: ' + name)
+    merged_names = [name for name in BUNDLE_ORDER if name in input_by_name or name in existing_files]
+    runtime_patched = patch_live_runtime(live.read_text())
+    project_patched = patch_project(project.read_text(), merged_names)
+    swift_text = swift_path.read_text()
+    # Preserve the installed custom HOME package across incremental updates.
+    launcher_source = input_by_name.get('TwoyiRedLauncher.apk', (None,))[0] or existing_files.get('TwoyiRedLauncher.apk')
+    if launcher_source:
+        meta = verify_launcher(launcher_source)
+        swift_text = pin_launcher_in_swift(swift_text, meta)
+    report = {'changes_applied': not dry_run, 'host_firstboot': True,
+              'guest_android': 17, 'guest_root_enabled': False,
+              'image_rebuild_needed_for_regular_apks': False,
+              'image_rebuild_needed_for_clipboard_privilege': True,
+              'input_apks': {name: meta for name, _, meta in inputs},
+              'preserved_existing_apks': sorted(set(existing_files) - set(input_by_name)),
+              'bundled_apks_after_update': merged_names}
+    if dry_run:
+        return report
+    target.mkdir(parents=True, exist_ok=True)
+    for name, source, _ in inputs:
+        dest = target / name
+        if dest.resolve() != source.resolve() and name not in existing_files:
+            shutil.copy2(source, dest)
+    (live.parent / swift_path.name).write_text(swift_text)
+    live.write_text(runtime_patched)
+    project.write_text(project_patched)
+    return report
+
+
+def main() -> None:
+    p = argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--kernarium', required=True, type=Path)
+    p.add_argument('--magisk-apk', type=Path)
+    p.add_argument('--titanium-apk', type=Path)
+    p.add_argument('--launcher-apk', type=Path, help='A real, compiled Android red launcher APK')
+    p.add_argument('--appmanager-apk', type=Path, help='Verified official App Manager v4.1.1 APK')
+    p.add_argument('--termux-apk', type=Path, help='Checksum-pinned Termux v0.118.3 ARM64 APK')
+    p.add_argument('--fdroid-apk', type=Path, help='Checksum-pinned full F-Droid v2.0.1 APK')
+    p.add_argument('--heliboard-apk', type=Path, help='Official HeliBoard v4.2 release APK')
+    p.add_argument('--dry-run', action='store_true')
+    a = p.parse_args()
+    print(json.dumps(stage(a.kernarium.resolve(), Path(__file__).resolve().parent,
+                           a.magisk_apk.resolve() if a.magisk_apk else None,
+                           a.titanium_apk.resolve() if a.titanium_apk else None,
+                           a.dry_run,
+                           a.launcher_apk.resolve() if a.launcher_apk else None,
+                           a.appmanager_apk.resolve() if a.appmanager_apk else None,
+                           a.termux_apk.resolve() if a.termux_apk else None,
+                           a.fdroid_apk.resolve() if a.fdroid_apk else None,
+                           a.heliboard_apk.resolve() if a.heliboard_apk else None), indent=2))
+
+
+if __name__ == '__main__':
+    main()
+,
+    re.MULTILINE,
+)
+
+
+def pin_launcher_in_swift(original: str, metadata: dict) -> str:
+    """Repeatable byte/hash pin update without deleting the marker.
+
+    An older already-patched source may have lost the marker; accept only one
+    exact known launcher entry in that case and restore the marker. Unknown or
+    duplicated entries fail closed rather than installing a guessed package.
+    """
+    custom = (
+        '        Package(filename: "TwoyiRedLauncher.apk", '
+        'androidPackage: "dev.twoyi.redlauncher",\n'
+        f'                expectedBytes: {metadata["bytes"]}, '
+        f'expectedSHA256: "{metadata["sha256"]}"),'
+    )
+    entries = list(CUSTOM_LAUNCHER_ENTRY.finditer(original))
+    if len(entries) > 1 or original.count(CUSTOM_LAUNCHER_MARKER) > 1:
+        raise ValueError('Duplicate launcher pin or custom package marker')
+    if entries:
+        match = entries[0]
+        original = original[:match.start()] + custom + original[match.end():]
+        if CUSTOM_LAUNCHER_MARKER not in original:
+            original = original.replace(custom, custom + '\n' + CUSTOM_LAUNCHER_MARKER, 1)
+        return original
+    if CUSTOM_LAUNCHER_MARKER not in original:
+        raise ValueError('Cannot pin launcher: no known entry or custom package marker')
+    return original.replace(
+        CUSTOM_LAUNCHER_MARKER,
+        custom + '\n' + CUSTOM_LAUNCHER_MARKER,
+        1,
+    )
+
+
 def patch_project(original: str, packages: list[str]) -> str:
     if PROJECT_ANCHOR not in original:
         raise ValueError('Andarium Xcode JSON project resource anchor changed')
