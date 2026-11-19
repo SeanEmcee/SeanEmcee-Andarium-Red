@@ -12,7 +12,7 @@ SOURCES = {
           public SharedPreferences getSharedPreferences(String key,int flags){return null;} }''',
     'android/content/SharedPreferences.java': '''package android.content;
         public interface SharedPreferences { int getInt(String key,int fallback); Editor edit();
-          interface Editor {Editor putInt(String key,int value); void apply();}}''',
+          interface Editor {Editor putInt(String key,int value); void apply(); boolean commit();}}''',
     'android/content/Intent.java': '''package android.content;
         public class Intent {public boolean hasExtra(String name){return false;}
           public int getIntExtra(String name,int fallback){return fallback;}}''',
@@ -27,7 +27,7 @@ SOURCES = {
             public int getInt(String k,int fallback){return saved.getOrDefault(k,fallback);}
             public SharedPreferences.Editor edit(){return this;}
             public SharedPreferences.Editor putInt(String k,int v){saved.put(k,v);return this;}
-            public void apply(){}
+            public void apply(){}\n            public boolean commit(){return true;}
           }
           static class Ctx extends Context {
             Prefs prefs = new Prefs();
