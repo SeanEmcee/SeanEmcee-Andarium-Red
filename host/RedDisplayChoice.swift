@@ -41,7 +41,7 @@ struct RedResolutionSetting: Codable, Equatable {
             return CGSize(width: native.width.rounded(), height: native.height.rounded())
         case .custom:
             guard customIsValid else { return nil }
-            return CGSize(width: width, height: height)
+            return CGSize(width: .init(width), height: .init(height))
         case .scaled:
             return nil
         }
