@@ -4,6 +4,28 @@
 
 **Pre-build state:** iOS source integration and first-build tooling are staged, but **no signed IPA, Android 17 image, Xcode compilation, or live iPhone benchmark has been certified**. Do not report runtime parity as complete.
 
+## v15.1 configuration and build improvements (Nov 19, 2026)
+
+- The Android reference-matched AMOLED red HOME is selected on first launch. Its Android Settings actions and app shortcuts are interactive; a **saved menu option** switches back to the lightweight native home, which supports an adaptive Nexaris accent. The static reference art itself is not recolored; no visual pixel-parity claim is made until actual screenshots are compared.
+- Root is checked only on explicit tap using the Android guest's actual `su` and Magisk binaries. No Magisk-managed rooted Android image has been built or booted, so do **not** confuse this check with a functioning Magisk implementation.
+- The preferred RAM profile is now configurable and persistent for **new guests**, separate from the current guest's live RAM selection. Max quality remains the default until changed.
+- Portable Swift resolution-policy source passed 22 behavioral checks and portable Swift memory default settings passed 12 in a Linux Swift 6 harness. These tests verify neither SwiftUI/Xcode linking nor device memory pressure.
+- Kernarium already implements camera, microphone and foreground-location permission toggles and guest-disk persistence. The source preflight now checks those upstream hooks, but it cannot grant iOS access or prove guest bridges without a real build/device.
+- The first-build command accepts `--with-apps` to fetch/checksum-pin the six known official Android apps; `--guest-proof PATH` allows the separately built Android 17 unsigned proof image (for full-build tests).
+
+```bash
+# On an appropriate build machine, after cloning and pinning Kernarium:
+bash scripts/first_build.sh /absolute/path/to/Kernarium --with-apps
+bash scripts/first_build.sh /absolute/path/to/Kernarium --preview
+bash scripts/first_build.sh /absolute/path/to/Kernarium --build --with-apps --guest-proof /absolute/path/to/Android17-proof-release
+```
+
+The unsigned proof image is **an input, not a byproduct of these scripts**. It must first be built on an appropriately configured x86_64 Linux Android build machine. A Mac/Xcode host compilation and signed iPhone tests remain pending. No GitHub Actions are used.
+
+[Detailed v15.1 readiness and blockers](docs/FIRST_BUILD_STATUS_v15.md).
+
+---
+
 ## v15 additions
 
 - **ANDD is the new default** on new installs, using physical dimensions from the scene's native display, adjusted to match its orientation. An iPhone 14 Pro Max reports 1290 × 2796 in portrait. Earlier explicit saved scaled modes remain selected when upgrading.
