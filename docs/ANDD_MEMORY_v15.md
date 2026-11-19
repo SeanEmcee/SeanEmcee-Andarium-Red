@@ -6,7 +6,7 @@
 ## Automatic Native Device Display (ANDD)
 
 - **New installation default:** Automatic Native Device Display (ANDD). Physical pixel size is read at runtime from UIWindowScene.screen.nativeBounds; hw.machine hardware identifier is informational only, not a resolution lookup table. Dimensions track screen orientation. On the iPhone 14 Pro Max (iPhone15,3), expected full portrait dimensions are **1290 × 2796**.
-- **Custom:** width/height numeric fields, linked chain (aspect locked to the ratio at the moment the chain is enabled), unlinked independent editing. Blank, invalid, below-256 or above-8192 side, or a framebuffer over 16,777,216 pixels cannot be saved. Android receives exact chosen dimensions rather than approximating to a scale preset.
+- **Custom:** width/height numeric fields, linked chain (aspect locked to the ratio at the moment the chain is enabled), unlinked independent editing. Blank, invalid, below-256 or above-4095 side, or a framebuffer over 16,777,216 pixels cannot be saved. Android receives exact chosen dimensions rather than approximating to a scale preset.
 - **Scaled:** Existing resolution factor choices remain accessible. An explicit saved pre-v15 selection is migrated into this mode and preserved. A noninteractive harness launch's explicit scale still takes priority for that run only.
 - **Rendering path:** Same resolution reaches Home's expected guest pixel layout, GuestDisplayView Metal drawable size, Android's reported display geometry/dpi, and guest touchscreen coordinate mapping. Resolutions take effect on next guest start. An unusual custom aspect ratio may appear letterboxed depending on host window, rather than warped.
 
