@@ -41,7 +41,7 @@ def run() -> None:
         for name,src in STUBS.items():
             f=tmp/name;f.parent.mkdir(parents=True,exist_ok=True);f.write_text(src)
         java=ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedNativeDashboard.java'
-        files=[*tmp.rglob('*.java'),java,ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedRootProbe.java', ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedAccentStore.java']
+        files=[*tmp.rglob('*.java'),java,ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedRootProbe.java', ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedAccentStore.java', ROOT/'launcher_src/java/dev/twoyi/redlauncher/DashboardGridPolicy.java']
         p=subprocess.run(['javac','-d',str(tmp/'classes'),*(str(f) for f in files)],capture_output=True,text=True)
         if p.returncode:raise SystemExit('NATIVE HOME JAVA STUB COMPILE FAILED: '+p.stderr)
         print('NATIVE_HOME_JAVA_STUB_COMPILE_PASS (NOT an Android SDK build)')
