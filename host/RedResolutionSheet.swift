@@ -23,7 +23,9 @@ struct RedResolutionSheet: View {
     }
 
     private var canSave: Bool {
-        changed && (draft.mode != .custom || draft.customIsValid)
+        changed &&
+        (draft.mode != .custom || draft.customIsValid) &&
+        (draft.mode != .andd || native == nil || draft.pixels(native: native) != nil)
     }
 
     var body: some View {
@@ -45,6 +47,13 @@ struct RedResolutionSheet: View {
                         Text("Physical screen dimensions will be read from this window.")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
+                    }
+                    if let native, draft.mode == .andd,
+                       draft.pixels(native: native) == nil {
+                        Label("This display exceeds the guest's supported pixel limits. Choose Custom or Scaled.",
+                              systemImage: "exclamationmark.triangle.fill")
+                            .font(.footnote)
+                            .foregroundStyle(.orange)
                     }
                     modeRow(.custom, title: "Custom resolution",
                             subtitle: "Enter your own width and height in pixels")
