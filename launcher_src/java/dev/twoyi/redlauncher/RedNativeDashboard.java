@@ -170,10 +170,12 @@ final class RedNativeDashboard extends ScrollView {
         content.addView(search, sp);
 
         GridLayout grid = new GridLayout(owner);
-        grid.setColumnCount(4);
-        // Each cell uses the actual screen width; the GridLayout is not a bitmap.
-        int width = getResources().getDisplayMetrics().widthPixels;
-        int cell = Math.max(dp(65), (width - dp(30)) / 4);
+        // Fit real Android guest widths rather than forcing a clipped four-column
+        // grid on small/split viewports. The HOME remains Android-native.
+        int available = Math.max(1, getResources().getDisplayMetrics().widthPixels - dp(30));
+        int columns = DashboardGridPolicy.columns(available, dp(80));
+        int cell = DashboardGridPolicy.cellWidth(available, dp(80));
+        grid.setColumnCount(columns);
         for (Tile tile : APPS) {
             LinearLayout card = new LinearLayout(owner);
             card.setOrientation(LinearLayout.VERTICAL);
