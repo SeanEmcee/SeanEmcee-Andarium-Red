@@ -1,8 +1,13 @@
 name: Andarium Red v17 - Xcode 27 first compile (unsigned)
-# Manual only: avoids consuming private-repository Actions minutes.
-# The workflow becomes eligible for free standard runner minutes if the user
-# separately makes the source repository public. No signing secrets are used.
+# Public repository: an exact, scoped, one-time push receipt may launch
+# the Xcode preview without interactive browser authentication.
+# Only build-requests/preview-*.txt on the reviewed feature branch triggers.
+# No signing secrets are used.
 on:
+  push:
+    branches: [feature/andd-memory-tuning]
+    paths:
+      - 'build-requests/preview-*.txt'
   workflow_dispatch:
     inputs:
       phase:
@@ -74,7 +79,7 @@ jobs:
             tee .build/ci/source-gate.log
 
       - name: Compile AndariumPreview with Xcode 27
-        if: inputs.phase == 'preview'
+        if: github.event_name == 'push' || inputs.phase == 'preview'
         shell: bash
         run: |
           set -euo pipefail
@@ -99,7 +104,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: andarium-first-compile-${{ inputs.phase }}-${{ github.sha }}
+          name: andarium-first-compile-${{ inputs.phase || 'preview' }}-${{ github.sha }}
           path: |
             .build/ci/*.txt
             .build/ci/*.log
