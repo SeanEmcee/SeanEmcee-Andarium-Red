@@ -1,0 +1,6 @@
+Andarium Red first public Xcode 27 preview build request
+Branch: feature/andd-memory-tuning
+Mode: source gate + Xcode 27 unsigned preview
+Request type: dedicated single-purpose GitHub push trigger
+Reviewed upstream Kernarium: fbe12ee72d195f0241c4fc24090a98b259026604
+No Apple signing material, no Android release claim, no Nexaris IPA.
