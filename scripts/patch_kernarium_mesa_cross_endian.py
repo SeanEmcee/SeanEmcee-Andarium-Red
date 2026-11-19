@@ -31,7 +31,10 @@ def apply(root: Path) -> None:
     changes = 0
     content = before
     for key in ("c_args", "cpp_args"):
-        marker = (key + " = ['-arch', 'arm64', '-target', '$TARGET', "
+        # Anchor the START of a Meson option line: `c_args` also appears
+        # as a suffix of `objc_args` and `objcpp_args`. Substring counting
+        # previously rejected the authentic pinned script before compiling.
+        marker = ("\\n" + key + " = ['-arch', 'arm64', '-target', '$TARGET', "
                   "'-isysroot', '$SDK_ROOT', '-I$STAGE/include']")
         changed = marker[:-1] + FLAGS + "]"
         if content.count(changed) == 1:
