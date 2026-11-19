@@ -132,9 +132,15 @@ public final class RedPanelActivity extends Activity {
     private void buildSettings() {
         top("Settings", "ANDROID " + Build.VERSION.RELEASE + "  •  Native Android controls");
         row("Guest status", "Build: " + Build.DISPLAY + "  •  Security patch: " + Build.VERSION.SECURITY_PATCH
-            + "  •  Root not verified", v -> rootInfo());
+            + "  •  Tap to check actual root", v -> rootInfo());
+        heading("Host wireless");
+        row("iPhone Wi-Fi", "Android uses the host's network; nearby iPhone Wi-Fi scan unavailable",
+            v -> hostWifiInfo());
+        row("iPhone Bluetooth", "Host permission required; guest has no direct Bluetooth radio",
+            v -> hostBluetoothInfo());
         heading("Android Settings");
-        setting("Network & internet", "Virtual network and connections", Settings.ACTION_WIRELESS_SETTINGS);
+        setting("Guest network & internet", "Virtual Wi-Fi adapter routes through the iOS host",
+            Settings.ACTION_WIRELESS_SETTINGS);
         setting("Apps", "Installed apps, defaults and permissions", Settings.ACTION_APPLICATION_SETTINGS);
         setting("Notifications", "App alerts and notifications", Settings.ACTION_NOTIFICATION_SETTINGS);
         setting("Display", "Display resolution, brightness and theme", Settings.ACTION_DISPLAY_SETTINGS);
@@ -157,10 +163,35 @@ public final class RedPanelActivity extends Activity {
                 .setPositiveButton("OK", null).show());
     }
 
+    private void hostWifiInfo() {
+        new AlertDialog.Builder(this).setTitle("iPhone Wi-Fi")
+            .setMessage("The Android guest reaches the network through the iOS host. Its virtual Wi-Fi adapter is not an independent physical radio. iOS does not expose a general nearby Wi-Fi scan to third-party apps. Select available networks in the iPhone's Wi-Fi Settings; do not interpret the Android virtual SSID as a physical hotspot.")
+            .setPositiveButton("OK", null).show();
+    }
+
+    private void hostBluetoothInfo() {
+        new AlertDialog.Builder(this).setTitle("iPhone Bluetooth")
+            .setMessage("The Android virtual machine has no direct Bluetooth radio. The iOS host can scan supported advertising Bluetooth peripherals only with user permission and a native Core Bluetooth bridge; this guest cannot enumerate every device in iPhone Settings or claim a Bluetooth device is paired. No hardware scan has been performed.")
+            .setPositiveButton("OK", null).show();
+    }
+
     private void rootInfo() {
         new AlertDialog.Builder(this).setTitle("Guest root")
-            .setMessage("Magisk Manager being installed does not mean Android has root. A userdebug guest may contain su, while Magisk-managed root requires a separately verified compatible boot image. No root command is executed automatically.")
-            .setPositiveButton("OK", null).show();
+            .setMessage("Only a real UID 0 response confirms su access. The diagnostic userdebug image may carry su, but Magisk Manager alone provides no root. Checking can request consent in Magisk if available. Root will not run automatically.")
+            .setPositiveButton("Check root", (dialog, which) -> checkRootOnUserTap()).show();
+    }
+
+    private void checkRootOnUserTap() {
+        // su may show a permission dialog. Never block the Android UI thread.
+        new Thread(() -> {
+            RedRootProbe.Result result = RedRootProbe.check(RedRootProbe.PROCESS_RUNNER);
+            runOnUiThread(() -> new AlertDialog.Builder(this)
+                .setTitle("Verified guest root")
+                .setMessage(result.label() + (result.magisk
+                    ? "\nMagisk was checked in the running guest."
+                    : "\nMagisk-managed root is not verified."))
+                .setPositiveButton("OK", null).show());
+        }, "AndariumRedUserRequestedRootProbe").start();
     }
 
     private void buildBrowser() {
