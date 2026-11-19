@@ -139,6 +139,23 @@ jobs:
           bash scripts/prepare_kernarium_ios_dependencies.sh "$PWD/.build/Kernarium" 2>&1 |
             tee .build/ci/ios-native-dependencies.log
 
+      - name: Build and verify pinned Android 17 ARM64 4 KiB kernel
+        if: inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/prepare_kernarium_4k_kernel.sh "$PWD/.build/Kernarium" 2>&1 |
+            tee .build/ci/android-4k-kernel.log
+
+      - name: Upload authentically verified ABI 29 kernel artifact
+        if: inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
+        uses: actions/upload-artifact@v4
+        with:
+          name: andarium-pinned-android17-abi29-4k-kernel-${{ github.sha }}
+          path: .build/Kernarium/.build/kernel/artifacts/android-6.18-arm64-4k-20261119-6.18.60-ca1/
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Compile the actual modified Andarium Red iPhoneOS host
         if: inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
         shell: bash
