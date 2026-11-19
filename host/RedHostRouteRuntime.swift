@@ -10,7 +10,7 @@ extension LiveRuntime {
     /// or Result: Bundle[{event=~}] when no request is pending.
     func redReadNativeHostLaunchMessage() async throws -> String {
         try await redClipboardShell(
-            "content call --uri content://dev.twoyi.redlauncher.host/launch --method next"
+            "content call --uri content://dev.twoyi.redlauncher.host/launch --method next --arg 1000"
         )
     }
 
