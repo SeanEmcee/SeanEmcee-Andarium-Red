@@ -38,6 +38,13 @@ if [[ -n "$GUEST_PROOF" && "$BUILD" != "--build" ]]; then
 fi
 SOURCE="$(cd "$(dirname "$0")/.." && pwd)"
 KERNARIUM="$(cd "$KERNARIUM" && pwd)"
+if [[ -n "$GUEST_PROOF" ]]; then
+  if [[ ! -d "$GUEST_PROOF" ]]; then
+    echo "ERROR: Android proof release directory does not exist" >&2
+    exit 1
+  fi
+  GUEST_PROOF="$(cd "$GUEST_PROOF" && pwd)"
+fi
 
 if [[ ! -f "$KERNARIUM/Andarium/Andarium.xcodeproj/project.xcproj" ]]; then
   echo "ERROR: Not a complete Kernarium Xcode checkout." >&2
