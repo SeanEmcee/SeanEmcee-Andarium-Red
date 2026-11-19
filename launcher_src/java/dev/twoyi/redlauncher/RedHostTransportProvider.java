@@ -30,6 +30,8 @@ public final class RedHostTransportProvider extends ContentProvider {
             if (!RedHostTransportStatus.isHostValue(arg))
                 throw new IllegalArgumentException("Invalid host transport status");
             context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY, arg).apply();
+            context.getContentResolver().notifyChange(
+                Uri.parse("content://" + AUTHORITY + "/state"), null);
             Bundle reply = new Bundle();
             reply.putString("transport", arg);
             return reply;
