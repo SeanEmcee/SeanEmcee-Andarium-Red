@@ -42,6 +42,8 @@ class AndroidHostLaunchTests(unittest.TestCase):
         self.assertIn('if ("ack".equals(method))', provider)
         self.assertIn("HostLaunchWire.matchesAck(event, arg)", provider)
         self.assertIn("EXPIRATION_MS = 120000L", provider)
+        self.assertIn("gate.notifyAll()", provider)
+        self.assertIn("gate.wait(waitMs)", provider)
 
     def test_reference_and_native_home_host_app_targets(self):
         home = (JAVA / "MainActivity.java").read_text()
