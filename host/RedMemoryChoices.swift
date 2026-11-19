@@ -11,6 +11,13 @@ enum RedMemoryChoices {
             host.memory.graphicsLineMiB(vCPUs: cores, cameraLive: cameraLive))
     }
 
+    /// Retain Kernarium's tested default guest RAM while leaving extra room
+    /// for heavy graphics when RAM and GPU headroom trade off.
+    static func graphicsPriorityMiB(on host: HostDevice, cores: Int, cameraLive: Bool = false) -> Int {
+        min(host.memory.defaultMemoryMiB(vCPUs: cores),
+            qualityMiB(on: host, cores: cores, cameraLive: cameraLive))
+    }
+
     static func safeMiB(on host: HostDevice, cores: Int) -> Int {
         host.memory.safeMemoryMiB(vCPUs: cores)
     }
@@ -60,6 +67,8 @@ struct RedMemoryPresetRow: View {
     @ViewBuilder private var presetButtons: some View {
         preset("Max quality",
                mib: RedMemoryChoices.qualityMiB(on: host, cores: guest.cores, cameraLive: cameraLive))
+        preset("Graphics priority",
+               mib: RedMemoryChoices.graphicsPriorityMiB(on: host, cores: guest.cores, cameraLive: cameraLive))
         preset("High RAM", mib: RedMemoryChoices.safeMiB(on: host, cores: guest.cores))
         preset("Device limit", mib: RedMemoryChoices.ceilingMiB(on: host, cores: guest.cores))
     }
@@ -79,7 +88,9 @@ struct RedMemoryPresetRow: View {
                         Color(.tertiarySystemGroupedBackground), in: .rect(cornerRadius: 12))
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier(title == "Max quality" ? "red-memory-quality" :
-                                 title == "High RAM" ? "red-memory-safe" : "red-memory-device-max")
+        .accessibilityIdentifier(
+            title == "Max quality" ? "red-memory-quality" :
+            title == "Graphics priority" ? "red-memory-graphics" :
+            title == "High RAM" ? "red-memory-safe" : "red-memory-device-max")
     }
 }
