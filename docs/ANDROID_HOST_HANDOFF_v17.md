@@ -4,6 +4,8 @@
 
 Android 17 Home displays **Nexaris, URL OS, Rap Box, Rap Keys, Settings** together in a host-app row, alongside the Android guest's normal applications such as Magisk, Termux, F-Droid, App Manager, HeliBoard and the browser.
 
+The Android 17 build now also contains five actual **LAUNCHER activity aliases** (HostNexaris, HostURLOS, HostRapBox, HostRapKeys, HostSettings), backed by a single checked `HostShortcutActivity`, with five separate XML vector icons in `launcher_src/res/drawable/`. These can appear in any Android launcher or activity picker that indexes LAUNCHER activities. They have no IPA or executable iOS code inside the guest.
+
 These five icons are Android **launch controls**, not IPA packages or app compatibility emulation. Android makes a request to the already-running **native Nexaris host shell**. Only Nexaris owns and opens the native app views. Android stays booted; selecting a host app is not a new Android boot.
 
 **Nexaris** returns to native **My Device** by default. The native Nexaris Andarium settings include **Return to previous tab**. The other four requests open their native destinations. The actual fade transition is implemented in the private Nexaris source, not by an Android animation or fake preview.
@@ -38,7 +40,7 @@ The fade view uses the real Nexaris UI beneath the actual guest UIViewController
 
 - Exact committed `HostLaunchWire.java` + actual Java harness: **45/45 checks passed** on a Linux JDK. Byte-for-byte Git blob hashes matched the private GitHub repository.
 - Exact committed `NexarisAndroidHostWire.swift`, including ADB shell closure and bounded-wait command, plus Swift harness: **25/25 checks passed** on Linux Swift. Byte-for-byte Git blob hashes matched. This does not typecheck the SwiftUI/iOS Nexaris view or claim Xcode success.
-- `tools/host_route_provider_behavior_test.py` adds 17 Android-shaped Java behavior checks for UID gating, busy mailbox, acknowledgement and stale-event refusal. These run from the complete working tree's first-build gate.
+- `tools/host_route_provider_behavior_test.py` adds 24 Android-shaped Java behavior checks for UID gating, busy mailbox, acknowledgement, stale-event refusal and exact launcher-alias mappings. These run from the complete working tree's first-build gate.
 - No Android image, signed Nexaris/Andarium IPA, or physical-iPhone fade/fps measurement was produced.
 
 ## Native-shell device acceptance
@@ -46,3 +48,9 @@ The fade view uses the real Nexaris UI beneath the actual guest UIViewController
 Build and boot the modified Android 17 image in the actual Nexaris/Andarium runtime. Confirm each of the five icons routes to the corresponding real host destination, Android is not rebooted, the same guest data remains intact, route replies are acknowledged exactly once, stale/foreign events are refused, and returning to Android does not cause a new guest boot. Verify the Nexaris return-tab setting in both modes. Record tap-to-host latency and the Android-to-native crossfade at 60/120 Hz, including no black frame or duplicate foreground UIWindow.
 
 **Release gate: NO-GO until the compiled Nexaris Andarium adapter, real guest image, and on-device acceptance succeed.**
+
+## Source packaging requirements
+
+The launcher Soong `android_app` includes `srcs: ["java/**/*.java"]`, `asset_dirs: ["assets"]`, **`resource_dirs: ["res"]`**, and the modified Android manifest. Integration fails before writing the upstream tree if any of the five launcher aliases, their vector icon resources, the mailbox provider, or the alias activity source is missing. The host navigation transition remains in Nexaris; Android's launchers only send intent names.
+
+A concrete but **not yet registered** `NexarisAndariumLiveRuntimeDriver` in Nexaris can bridge a real running Android 17 engine's start/stop/display/accent/authenticated ADB shell operations. It refuses mailbox reads unless the linked driver confirms boot completion. The actual engine and Android 17 guest image still must be compiled and linked.
