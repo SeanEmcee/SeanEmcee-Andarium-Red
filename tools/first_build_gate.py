@@ -147,6 +147,7 @@ def inspection(kernarium: Path, *, source: Path = ROOT, require_artifacts: bool 
             "Both javac and java required for Android source tests")
         if java_check:
             for name, script in (
+                ("Android host route provider Java behavior", "tools/host_route_provider_behavior_test.py"),
                 ("Android clipboard provider Java typecheck", "tools/java_compile_smoke.py"),
                 ("Android clipboard Java behavior", "tools/clipboard_provider_behavior_test.py"),
                 ("Native red Settings/browser Java typecheck", "tools/android_panel_stub_compile.py"),
