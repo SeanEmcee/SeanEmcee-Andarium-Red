@@ -47,7 +47,9 @@ SOURCES.update({
       }''',
     'dev/twoyi/redlauncher/ThemeProviderHarness.java': r'''package dev.twoyi.redlauncher;
       import android.content.*;
-      import android.os.*;
+      import android.os.Binder;
+      import android.os.Bundle;
+      import android.os.Process;
       public final class ThemeProviderHarness {
         private static int checks;
         private static void ok(boolean value,String why){
