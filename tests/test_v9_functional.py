@@ -15,12 +15,16 @@ sys.path.insert(0, str(ROOT / 'tools'))
 import verify_guest as guest
 
 class NativeDashboardTests(unittest.TestCase):
-    def test_android_native_widgets_are_default(self):
+    def test_android_reference_skin_is_default_with_native_fallback(self):
         source = (ROOT/'launcher_src/java/dev/twoyi/redlauncher/MainActivity.java').read_text()
+        self.assertIn('getInt(HOME_STYLE_KEY, 1) == 1', source)
+        self.assertIn('setHomeStyle(boolean reference, boolean persist)', source)
         self.assertIn('dashboard = new RedNativeDashboard(this);', source)
         self.assertIn('setContentView(dashboard);', source)
         self.assertIn('dashboard.refresh();', source)
-        self.assertIn('View original design mockup', source)
+        self.assertIn('Use exact-reference layout', source)
+        self.assertIn('Use lightweight native layout', source)
+        self.assertIn('drawHostAppRail(canvas, x, y, scale)', source)
 
     def test_missing_apps_are_never_shown_as_working(self):
         source = (ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedNativeDashboard.java').read_text()
