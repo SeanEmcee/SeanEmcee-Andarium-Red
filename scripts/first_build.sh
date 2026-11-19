@@ -126,7 +126,10 @@ python3 "$SOURCE/tools/first_build_gate.py" \
   --kernarium "$KERNARIUM" --source "$SOURCE" --require-artifacts
 
 echo "Attempting non-signed first Xcode compiler build..."
+# Stable derived-data location is required for a later IPA packaging step.
+# This is a genuine iPhoneOS device build, not an iOS Simulator executable.
 xcodebuild -project Andarium/Andarium.xcodeproj -scheme Andarium \
   -configuration Release -destination 'generic/platform=iOS' \
-  CODE_SIGNING_ALLOWED=NO build
+  -derivedDataPath "${ANDARIUM_HOST_DERIVED_DATA_PATH:-$KERNARIUM/.build/DerivedDataAndariumHost}" \
+  CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
 echo "Unsigned compile completed. Signing, entitlements and device run are separate release gates."
