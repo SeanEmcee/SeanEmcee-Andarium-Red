@@ -1,3 +1,34 @@
+# Andarium Red v17 — pre-build hardening and acceptance tooling
+
+**Release still NO-GO:** Source-level improvements are committed and selective Java/Swift harnesses were exercised locally. No full Android image, iOS IPA, device boot, genuine Magisk root, native AOT benchmark, or 7-day persistence run exists yet.
+
+## v17 source improvements
+
+- **Responsive Android HOME:** Changed the launcher from a forced four-column app grid to a width-aware one-to-four-column layout. The isolated grid logic compiled and passed **2,006 local Java assertions**, including edge widths.
+- **Screen continuity:** The Android Settings/browser view now preserves an in-progress browser URL when the Nexaris-selected accent changes. Restricted package-manager lookups fail gracefully rather than crashing.
+- **Verified host control colors:** The iOS host clipboard overlay is no longer hardcoded red. It adopts the RGB that Android confirmed through an authenticated ADB write/readback, with source-only tests. This is not yet compiled into a Nexaris IPA.
+- **Pre-build source gate:** `--require-source-ready` makes a missing source requirement exit nonzero. The offline validator invokes it and explicitly labels `--only` filtered runs as incomplete coverage.
+- **Guest persistence testing:** Added opt-in create/verify token commands for checking the guest data disk across actual restarts, app updates, and elapsed time. The marker is never treated as runtime evidence until verified in a real Android guest.
+- **Nexaris status colors:** Native Nexaris Andarium development screen now shows source-implemented areas in green and keeps the engine/Android boot unverified until real driver evidence exists.
+
+Run the offline source checks (not an IPA or Android image build):
+
+```sh
+python3 tools/prebuild_validate_v16.py --report prebuild-source-v17.json
+```
+
+After a real Android guest is running, the two-stage persistence acceptance can be done explicitly:
+
+```sh
+python3 tools/verify_guest.py --create-persistence-marker
+# Save the 32-character token from the check result, restart/update the actual guest
+python3 tools/verify_guest.py --check-persistence-marker <saved-32-character-token>
+```
+
+Do not run the second step until a guest restart/update has actually occurred; retest again after seven days for long-term persistence. Neither the above tooling nor a green source report is a substitute for functional device parity.
+
+---
+
 # Andarium Red v16 — non-disruptive Android theme handoff and offline pre-build gate
 
 **Release: NO-GO.** The private source branch now contains a local, shell-authorized Android theme provider with a Swift write-and-readback transport. This does not boot Android 17, connect the real Nexaris runtime adapter, establish Magisk root, or prove visual parity. No GitHub Actions, Android image build, or signed IPA build has been run.
