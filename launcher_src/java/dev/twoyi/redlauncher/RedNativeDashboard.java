@@ -259,14 +259,15 @@ final class RedNativeDashboard extends ScrollView {
     }
 
     private void openPackage(String packageName, String label) {
-        Intent launch = owner.getPackageManager().getLaunchIntentForPackage(packageName);
-        if (launch == null) {
-            Toast.makeText(owner, label + " is not installed or cannot be launched", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        try { owner.startActivity(launch); }
-        catch (ActivityNotFoundException absent) {
-            Toast.makeText(owner, label + " cannot be opened", Toast.LENGTH_SHORT).show();
+        try {
+            Intent launch = owner.getPackageManager().getLaunchIntentForPackage(packageName);
+            if (launch == null) {
+                Toast.makeText(owner, label + " is not installed or cannot be launched", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            owner.startActivity(launch);
+        } catch (ActivityNotFoundException | SecurityException denied) {
+            Toast.makeText(owner, label + " cannot be opened under guest permissions", Toast.LENGTH_SHORT).show();
         }
     }
 
