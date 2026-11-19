@@ -65,7 +65,10 @@ final class RedHostTransportRelay {
         if route == published && pending == nil { return }
         pending = route
         if worker == nil {
-            worker = Task { [weak self] in await self?.drain() }
+            worker = Task { [weak self] in
+                guard let self else { return }
+                await self.drain()
+            }
         }
     }
 
