@@ -1,4 +1,4 @@
-# Functional parity acceptance — v14
+# Functional parity acceptance — v16 source continuation
 
 Do **not** interpret a green source check as 100% functional parity. Each target passes only when its guest image, host app, and device behavior have been built and independently exercised. The supplied concept artwork is a visual reference, not functioning UI.
 
@@ -21,6 +21,17 @@ Do **not** interpret a green source check as 100% functional parity. Each target
 | 8 | Authorized iOS permission bridge (clipboard, microphone, camera, location as supported) | User prompts, explicit handoff, sandbox checks and device tests per permission | Clipboard source only |
 | 9 | Persistent Android guest and one-tap access; survive relaunch and more than seven days | Reboot, app update, container and signing-expiry tests with preserved guest app data | NOT VERIFIED |
 | 10 | Authorized signed IPA, LiveContainer compatibility and device testing | Signed iOS archive and iPhone 14 Pro Max on iOS 27.3 running guest with real diagnostics | NOT VERIFIED |
+
+## What v16 changes (source only)
+
+- The Android launcher now has a package-local, shell-authorized RGB ContentProvider, requiring the `DUMP` permission and checking the calling UID; 24-bit colors are durably saved before responding.
+- The iOS-side guest ADB bridge writes the value and reads it back, validating exact `Bundle` replies. Unlike a launcher `am start` action, this transport does not forcibly foreground Android HOME.
+- Native launcher and Settings/browser components observe RGB updates while visible.
+- The live verifier has opt-in `--check-theme-provider` (read-only) and `--check-theme-write` (restored when unchanged) probes.
+- Local Swift source protocol harness passed 17 cases, and an isolated Java provider compile/smoke check passed. The full native Android 17 build and full repository test suite remain unverified.
+- The v16 single-command source validator cannot override a missing runtime acceptance gate, even when all source checks pass.
+
+**Target 6 remains INCOMPLETE**: Nexaris has a runtime protocol and queued/coalesced theme calls but no compiled, connected engine adapter. Theme readback is not equivalent to verified Android pixels on the iPhone.
 
 ## What v14 changes
 
