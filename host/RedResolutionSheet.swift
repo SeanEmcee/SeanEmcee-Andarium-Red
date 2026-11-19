@@ -159,7 +159,7 @@ struct RedResolutionSheet: View {
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             if !draft.customIsValid {
-                Label("Each side must be 256–8192 pixels, with no more than 16.7 million pixels total.",
+                Label("Each side must be 256–4095 pixels, with no more than 16.7 million pixels total.",
                       systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.orange)
                     .font(.footnote)
