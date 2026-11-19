@@ -64,10 +64,16 @@ struct RedResolutionSetting: Codable, Equatable {
     }
 
     mutating func setLinked(_ on: Bool) {
+        // Partly edited/corrupt dimensions cannot create a ratio that traps Int.
+        guard !on || (width > 0 && height > 0 &&
+                      width <= Self.maximumSide && height <= Self.maximumSide) else {
+            linked = false
+            return
+        }
         linked = on
         if on {
-            ratioWidth = max(width, 1)
-            ratioHeight = max(height, 1)
+            ratioWidth = width
+            ratioHeight = height
         }
     }
 
@@ -75,17 +81,21 @@ struct RedResolutionSetting: Codable, Equatable {
     /// editing only one field with the chain off never touches the other.
     mutating func setWidth(_ newValue: Int) {
         width = newValue
-        if linked, newValue > 0, newValue <= 100_000 {
-            height = Int((Double(newValue) * Double(ratioHeight) /
-                Double(max(ratioWidth, 1))).rounded())
+        if linked, newValue > 0, newValue <= Self.maximumSide {
+            let target = (Double(newValue) * Double(ratioHeight) /
+                Double(max(ratioWidth, 1))).rounded()
+            height = target.isFinite && target >= 0 && target <= Double(Self.maximumSide)
+                ? Int(target) : 0
         }
     }
 
     mutating func setHeight(_ newValue: Int) {
         height = newValue
-        if linked, newValue > 0, newValue <= 100_000 {
-            width = Int((Double(newValue) * Double(ratioWidth) /
-                Double(max(ratioHeight, 1))).rounded())
+        if linked, newValue > 0, newValue <= Self.maximumSide {
+            let target = (Double(newValue) * Double(ratioWidth) /
+                Double(max(ratioHeight, 1))).rounded()
+            width = target.isFinite && target >= 0 && target <= Double(Self.maximumSide)
+                ? Int(target) : 0
         }
     }
 }
@@ -96,12 +106,18 @@ enum RedResolutionStore {
     static func load(from defaults: UserDefaults = .standard) -> RedResolutionSetting? {
         guard let data = defaults.data(forKey: key),
               let setting = try? JSONDecoder().decode(RedResolutionSetting.self, from: data),
-              setting.mode != .custom || setting.customIsValid else { return nil }
+              (setting.mode != .custom || setting.customIsValid),
+              setting.ratioWidth > 0, setting.ratioHeight > 0,
+              setting.ratioWidth <= RedResolutionSetting.maximumSide,
+              setting.ratioHeight <= RedResolutionSetting.maximumSide else { return nil }
         return setting
     }
 
     static func save(_ setting: RedResolutionSetting, to defaults: UserDefaults = .standard) {
-        guard setting.mode != .custom || setting.customIsValid,
+        guard (setting.mode != .custom || setting.customIsValid),
+              setting.ratioWidth > 0, setting.ratioHeight > 0,
+              setting.ratioWidth <= RedResolutionSetting.maximumSide,
+              setting.ratioHeight <= RedResolutionSetting.maximumSide,
               let data = try? JSONEncoder().encode(setting) else { return }
         defaults.set(data, forKey: key)
     }
