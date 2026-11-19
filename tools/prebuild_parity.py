@@ -193,6 +193,13 @@ def inspect(root: Path = ROOT, kernarium: Path | None = None) -> dict:
         and 'Math.min(4, availablePixels / desiredCellPixels)' in grid_logic
         and 'if (dashboard != null) dashboard.refresh()' in launcher,
         'Responsive widget grid source; 2,006 arithmetic assertions pass locally; real Android appearance untested')
+    prepare_embed = (root / 'tools/prepare_embedded_kernarium.py').read_text()
+    add('Opt-in upstream Andarium @main guard preserves the actual engine model',
+        'def prepare(source: str)' in prepare_embed
+        and 'final class AndariumProcess' in prepare_embed
+        and 'NEXARIS_EMBEDDED_ANDARIUM' in prepare_embed
+        and 'apply: bool = False' in prepare_embed,
+        'Version-gated, idempotent source preparation; full Nexaris engine linkage and IPA remain unverified')
     add('Two-stage guest data persistence acceptance is available',
         'def create_persistence_marker(adb: str)' in live_check
         and 'def verify_persistence_marker(adb: str, expected: str)' in live_check
