@@ -15,6 +15,7 @@ from pathlib import Path
 
 import install_source_overlay as guest
 import host_firstboot as firstboot
+import red_runtime_overlay as red
 
 REVIEWED_UPSTREAM = '538de0dddaa0af5779bfbf7bb8e12e0938c3389a'
 
@@ -75,6 +76,13 @@ def integrate(
                                           termux=kwargs['termux'], fdroid=kwargs['fdroid'],
                                           heliboard=kwargs['heliboard'])
 
+    # Synthetic test fixtures can omit the iOS presentation tree. A genuine
+    # Kernarium checkout has all host sources; do not fake a successful host
+    # integration when files are missing.
+    red_preflight = (red.apply(kernarium, source, dry_run=True)
+                     if red.is_complete_checkout(kernarium) else
+                     {'applied': False, 'reason': 'Incomplete host tree; source overlay not applied'})
+
     checkout_sha = verified_upstream_revision(kernarium)
     report = {
         'android_version': 17,
@@ -84,6 +92,7 @@ def integrate(
         'dry_run': dry_run,
         'guest_overlay': guest_preflight,
         'firstboot': host_preflight,
+        'red_display_memory': red_preflight,
         'source_patches_applied': False,
         'ios_archive_built': False,
         'iphone_tested': False,
@@ -106,6 +115,9 @@ def integrate(
                                        appmanager=kwargs['appmanager'],
                                           termux=kwargs['termux'], fdroid=kwargs['fdroid'],
                                           heliboard=kwargs['heliboard'])
+    red_result = (red.apply(kernarium, source, dry_run=False)
+                  if red.is_complete_checkout(kernarium) else red_preflight)
+    report['red_display_memory'] = red_result
     report['guest_overlay'] = overlay_result
     report['firstboot'] = host_result
     report['source_patches_applied'] = True
