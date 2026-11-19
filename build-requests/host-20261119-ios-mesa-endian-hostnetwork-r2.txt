@@ -1,0 +1,7 @@
+Unsigned Andarium Red first-compile request.
+Revisions after failed #44639645772:
+- Restore genuine iPhoneOS Mesa GLSL compilation using exact ARM64 little-endian definitions.
+- Preserve authentic pinned GPU, networking, storage and kernel artifact verifiers.
+- Integrate iOS NWPathMonitor into Red Android host transport status, preserving VirtWifi backend and automatic libslirp network path migration.
+- Require Java and Swift source checks, exact Kotlin/Swift/guest overlays; no signing secrets.
+- Do not publish a Red guest IPA without separately compiled Android17 proof.
