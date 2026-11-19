@@ -175,6 +175,23 @@ class RedRuntimeOverlayTests(unittest.TestCase):
         self.assertIn("maximumSide = 4095", source)
 
 
+    def test_memory_preset_preferences_compile_and_persist(self):
+        compiler = shutil.which("swiftc")
+        if compiler is None:
+            self.skipTest("Swift compiler unavailable; first_build_gate requires it")
+        with tempfile.TemporaryDirectory() as build:
+            program = Path(build) / "red-memory-preset-test"
+            source = self.source / "host/RedMemoryPresetSettings.swift"
+            harness = self.source / "tests/RedMemoryPresetHarness.swift"
+            compile_ = subprocess.run([compiler, str(source), str(harness), "-o",
+                                       str(program)], capture_output=True, text=True,
+                                      timeout=90)
+            self.assertEqual(compile_.returncode, 0, compile_.stderr)
+            checked = subprocess.run([str(program)], capture_output=True, text=True,
+                                     timeout=30)
+            self.assertEqual(checked.returncode, 0, checked.stderr)
+            self.assertIn("RED_MEMORY_PRESET_12_PASS", checked.stdout)
+
     def test_actual_swift_policy_compiles_and_runs(self):
         compiler = shutil.which("swiftc")
         if compiler is None:
