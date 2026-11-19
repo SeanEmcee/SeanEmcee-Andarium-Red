@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageInfo;
@@ -56,6 +57,14 @@ public final class MainActivity extends Activity {
     };
     private String androidVersion = "unknown";
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private final SharedPreferences.OnSharedPreferenceChangeListener themeObserver =
+        (preferences, key) -> {
+            if (!RedAccentStore.KEY.equals(key)) return;
+            runOnUiThread(() -> {
+                if (dashboard != null) dashboard.refresh();
+                if (skin != null) skin.invalidate();
+            });
+        };
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -79,6 +88,18 @@ public final class MainActivity extends Activity {
         super.onNewIntent(intent);
         setIntent(intent);
         if (RedAccentStore.acceptLaunchAccent(this, intent) && dashboard != null) dashboard.refresh();
+    }
+
+    @Override protected void onStart() {
+        super.onStart();
+        getSharedPreferences(RedAccentStore.PREFS, MODE_PRIVATE)
+            .registerOnSharedPreferenceChangeListener(themeObserver);
+    }
+
+    @Override protected void onStop() {
+        getSharedPreferences(RedAccentStore.PREFS, MODE_PRIVATE)
+            .unregisterOnSharedPreferenceChangeListener(themeObserver);
+        super.onStop();
     }
 
     @Override protected void onResume() {
@@ -128,6 +149,7 @@ public final class MainActivity extends Activity {
     @Override public void onConfigurationChanged(Configuration c) {
         super.onConfigurationChanged(c);
         if (skin != null) skin.invalidate();
+        if (dashboard != null) dashboard.refresh();
     }
 
     private final class SkinView extends View {
