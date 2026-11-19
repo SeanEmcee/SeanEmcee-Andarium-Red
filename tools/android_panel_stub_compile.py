@@ -11,9 +11,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 STUBS = {
-'android/content/Context.java': '''package android.content; public class Context { public android.content.res.Resources getResources(){return null;} public android.content.pm.PackageManager getPackageManager(){return null;} public void startActivity(Intent i){} public static final int MODE_PRIVATE=0; public SharedPreferences getSharedPreferences(String n,int m){return null;} }''',
+'android/content/Context.java': '''package android.content; public class Context { public android.content.res.Resources getResources(){return null;} public android.content.pm.PackageManager getPackageManager(){return null;} public void startActivity(Intent i){} public static final int MODE_PRIVATE=0; public SharedPreferences getSharedPreferences(String n,int m){return null;} public ContentResolver getContentResolver(){return null;} }''',
+'android/content/ContentValues.java': '''package android.content; public class ContentValues {}''',
+'android/content/ContentResolver.java': '''package android.content; public class ContentResolver { public android.os.Bundle call(android.net.Uri uri,String method,String arg,android.os.Bundle extras){return null;} }''',
+'android/content/ContentProvider.java': '''package android.content; public abstract class ContentProvider { public Context getContext(){return null;} public abstract boolean onCreate(); public android.os.Bundle call(String method,String arg,android.os.Bundle extras){return null;} public abstract android.database.Cursor query(android.net.Uri uri,String[] projection,String selection,String[] selectionArgs,String sortOrder); public abstract String getType(android.net.Uri uri); public abstract android.net.Uri insert(android.net.Uri uri,ContentValues values); public abstract int delete(android.net.Uri uri,String selection,String[] selectionArgs); public abstract int update(android.net.Uri uri,ContentValues values,String selection,String[] selectionArgs); }''',
+'android/database/Cursor.java': '''package android.database; public interface Cursor {}''',
+'android/os/Process.java': '''package android.os; public class Process {public static final int SHELL_UID=2000; public static int myUid(){return 10000;} }''',
+'android/os/Binder.java': '''package android.os; public class Binder {public static int getCallingUid(){return 10000;} }''',
 'android/content/Intent.java': '''package android.content; public class Intent { public static final String ACTION_VIEW=""; public Intent(String a){} public Intent(String a,android.net.Uri uri){} public Intent(Context c,Class<?> cls){} public Intent setPackage(String p){return this;} public String getStringExtra(String x){return null;} public int getIntExtra(String k,int d){return d;} public boolean hasExtra(String k){return false;} public Intent putExtra(String k,String v){return this;} }''',
-'android/content/SharedPreferences.java': '''package android.content; public interface SharedPreferences {int getInt(String k,int v);Editor edit();interface Editor {Editor putInt(String k,int v);void apply();}}''',
+'android/content/SharedPreferences.java': '''package android.content; public interface SharedPreferences {int getInt(String k,int v);String getString(String k,String v);Editor edit();interface Editor {Editor putInt(String k,int v);Editor putString(String k,String v);void apply();}}''',
 'android/content/ActivityNotFoundException.java': '''package android.content; public class ActivityNotFoundException extends RuntimeException {}''',
 'android/content/DialogInterface.java': '''package android.content; public interface DialogInterface { interface OnClickListener {void onClick(DialogInterface d,int which);} }''',
 'android/content/pm/PackageManager.java': '''package android.content.pm; public class PackageManager { public Object getPackageInfo(String name,int flags) throws NameNotFoundException{return null;} public android.content.Intent getLaunchIntentForPackage(String p){return null;} public static class NameNotFoundException extends Exception{} }''',
@@ -25,7 +31,7 @@ STUBS = {
 'android/graphics/Typeface.java': '''package android.graphics; public class Typeface {public static final Typeface DEFAULT=new Typeface();public static final int BOLD=1,NORMAL=0;}''',
 'android/net/Uri.java': '''package android.net; public class Uri {public static Uri parse(String a){return null;} public String getHost(){return null;} public String getScheme(){return null;} }''',
 'android/os/Build.java': '''package android.os; public class Build {public static String DISPLAY=""; public static class VERSION {public static String RELEASE="",SECURITY_PATCH="";} }''',
-'android/os/Bundle.java': '''package android.os; public class Bundle {}''',
+'android/os/Bundle.java': '''package android.os; public class Bundle {public String getString(String k){return null;} public void putString(String k,String v){} }''',
 'android/provider/Settings.java': '''package android.provider; public class Settings { public static final String ACTION_SETTINGS="",ACTION_WIRELESS_SETTINGS="",ACTION_APPLICATION_SETTINGS="", ACTION_NOTIFICATION_SETTINGS="", ACTION_DISPLAY_SETTINGS="", ACTION_INTERNAL_STORAGE_SETTINGS="",ACTION_PRIVACY_SETTINGS="",ACTION_SECURITY_SETTINGS="",ACTION_SYNC_SETTINGS="",ACTION_ACCESSIBILITY_SETTINGS="",ACTION_DEVICE_INFO_SETTINGS="",ACTION_APPLICATION_DEVELOPMENT_SETTINGS="",ACTION_INPUT_METHOD_SETTINGS="",ACTION_MANAGE_DEFAULT_APPS_SETTINGS=""; }''',
 'android/text/InputType.java': '''package android.text; public class InputType {public static final int TYPE_CLASS_TEXT=1, TYPE_TEXT_VARIATION_URI=2;}''',
 'android/view/Gravity.java': '''package android.view; public class Gravity {public static final int CENTER_VERTICAL=1;}''',
@@ -46,7 +52,7 @@ def run() -> None:
             f=path/name
             f.parent.mkdir(parents=True,exist_ok=True)
             f.write_text(text)
-        sources=list(path.rglob('*.java')) + [ROOT/'launcher_src/java/dev/twoyi/redlauncher/PanelLinkPolicy.java',ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedPanelActivity.java',ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedAccentStore.java',ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedRootProbe.java']
+        sources=list(path.rglob('*.java')) + [ROOT/'launcher_src/java/dev/twoyi/redlauncher/PanelLinkPolicy.java',ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedPanelActivity.java',ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedAccentStore.java',ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedRootProbe.java',ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedHostTransportStatus.java',ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedHostTransportProvider.java']
         result=subprocess.run(['javac','-d',str(path/'classes'),*[str(p) for p in sources]],capture_output=True,text=True)
         if result.returncode:
             raise SystemExit('RED PANEL STUB COMPILE FAILED: '+result.stderr)
