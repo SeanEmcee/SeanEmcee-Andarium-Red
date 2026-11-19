@@ -1,7 +1,7 @@
 {
   "product": "Andarium Red Android 17",
   "version": "v15.1-dev",
-  "build_status": "SOURCE PREPARED; XCODE COMPILE NOT YET RUN",
+  "build_status": "NO-GO — SOURCE PREPARED FOR FIRST BUILD; XCODE AND ANDROID 17 NOT YET COMPILED",
   "target6": "DEFERRED",
   "python_tests": {
     "prior_v14_passed": 139,
@@ -34,7 +34,8 @@
     "Bundled launcher APK requires binary AndroidManifest and structurally valid DEX header",
     "AOT archive-eligible acceptance candidate can be generated only via explicit CLI switch",
     "ANDD policy 22/22 exact Swift compile-and-run checks on Linux; memory default preference 12/12 exact Swift compile-and-run checks. SwiftUI integration remains unbuilt.",
-    "Local bash first_build.sh syntax check and negative-option handling; current GitHub full regression suite has not been run."
+    "Local bash first_build.sh syntax check and negative-option handling; current GitHub full regression suite has not been run.",
+    "Unsigned-proof package generator and synthetic metadata tests added to repo; actual target-files, GPT disk and assembled proof have not been built or verified here."
   ],
   "targets": {
     "1_magisk_managed_root": {
@@ -118,6 +119,15 @@
     "macos_xcode_compile_completed": false,
     "android_17_custom_image_completed": false,
     "signed_ipa_completed": false,
-    "iphone_14_pro_max_device_verified": false
+    "iphone_14_pro_max_device_verified": false,
+    "unsigned_android_proof_packager": "tools/create_unsigned_proof.py",
+    "unsigned_proof_compiled_target_modules_required": [
+      "TwoyiRedLauncher",
+      "TwoyiRedClipboard"
+    ],
+    "unsigned_proof_android17_file_acceptance_tested": false,
+    "ubuntu_x86_64_android_producer_documented": true,
+    "compiled_local_swift_policy_checks_note": "Portable policy source was reconstructed from the GitHub files in a local Swift compiler and 22 focused checks passed; no full iOS target typecheck.",
+    "compiled_local_swift_memory_preset_checks_note": "Portable RAM-profile persistence source reconstructed from GitHub and compiled/tested locally (12 tests)."
   }
 }
