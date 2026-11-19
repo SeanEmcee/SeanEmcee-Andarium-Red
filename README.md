@@ -17,7 +17,9 @@ On a Mac with Xcode 27, and a checked-out Kernarium tree at the pinned commit:
 
 ```sh
 ./scripts/first_build.sh /absolute/path/to/Kernarium
-# Once the matching runtime and accepted Android system image are available:
+# Build the iOS settings preview without Android/runtime binaries:
+./scripts/first_build.sh /absolute/path/to/Kernarium --preview
+# Once matching runtime and accepted Android image are available:
 ./scripts/first_build.sh /absolute/path/to/Kernarium --build
 ```
 
