@@ -1,0 +1,25 @@
+# Do not commit signing materials or proprietary/runnable payloads
+*.ipa
+*.apk
+*.aab
+*.mobileprovision
+*.p12
+*.p8
+*.key
+*.pem
+*.xcarchive
+.env
+.env.*
+!*.env.example
+.DS_Store
+__pycache__/
+*.py[cod]
+.build/
+build/
+dist/
+.gradle/
+.idea/
+.vscode/
+*.ips
+*.crash
+*.log

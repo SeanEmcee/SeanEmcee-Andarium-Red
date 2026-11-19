@@ -1,0 +1,82 @@
+{
+  "product": "Andarium Red Android 17",
+  "version": "v14",
+  "build_status": "NO-GO",
+  "target6": "DEFERRED",
+  "python_tests": {
+    "passed": 139,
+    "total": 139
+  },
+  "source_presence": {
+    "passed": 44,
+    "total": 44
+  },
+  "upstream_latest_observed_commit": "fbe12ee72d195f0241c4fc24090a98b259026604",
+  "upstream_compatibility_with_latest": "NOT COMPILED; baseline review only, do not infer working Android 17 build",
+  "changes_verified_locally": [
+    "Guest native launcher/Settings/browser now accept persistent RGB theme values through an explicit launch extra; 13 local Java behavior assertions, no live Nexaris host transport",
+    "Nexaris feature branch independently inspected: it has a My Device Andarium section, selected theme source, and disabled swipe gestures; runtime registry unconnected",
+    "Existing officially pinned APKs are preserved and reverified during incremental staging; new APKs can be appended without rejecting the entire resource set",
+    "Incremental staging rejects hash conflicts, unknown files, symlinked resources, and unexpected/duplicate Xcode resource entries",
+    "Existing custom launcher APK hashes stay pinned in the host installer when adding more apps later",
+    "Read-only audit cross-checks on-disk APKs, Xcode resource declarations, and Swift installer SHA-256/size before the first build",
+    "137 of 137 Python regression tests and Android Java stub behavior/harnesses, Swift syntax and compiled Swift clipboard harness pass",
+    "Swift, Android Java and Python clipboard endpoints reject noncanonical Base64 and spoofed Bundle output",
+    "Guest ADB clipboard verifier preserves newer clipboard contents when another app changes clipboard mid-test",
+    "AOT acceptance descriptor must pass strict syntax/digest/policy checks and upstream verify --accepted against the release before candidate is retained",
+    "Swift clipboard protocol strictly parses exact Android Bundle output and refuses duplicate keys",
+    "Android clipboard provider refuses invalid UTF-8 and noncanonical base64, preserving existing clipboard",
+    "First-boot installer scans bundled APKs at most once per guest run after a completed scan",
+    "In-place upgrade of existing v10 injected first-boot method with no duplicate hook",
+    "Bundled launcher APK requires binary AndroidManifest and structurally valid DEX header",
+    "AOT archive-eligible acceptance candidate can be generated only via explicit CLI switch"
+  ],
+  "targets": {
+    "1_magisk_managed_root": {
+      "state": "INCOMPLETE",
+      "reason": "Magisk manager staging and diagnostic root checks exist; still no guest-booted Magisk daemon/UID0 acceptance."
+    },
+    "2_native_settings_browser_ui": {
+      "state": "INCOMPLETE",
+      "reason": "Native UI source exists but full Android compilation, runtime interaction and visual parity not verified"
+    },
+    "3_android17_bidirectional_clipboard": {
+      "state": "INCOMPLETE",
+      "reason": "Canonical protocol and concurrent-edit-safe live verifier locally tested; image inclusion, signature permissions and iOS-to-Android use are unverified."
+    },
+    "4_native_resolution_aot_fast_boot": {
+      "state": "INCOMPLETE",
+      "reason": "AOT descriptor candidate now checked by upstream release verifier, but no real artifact, signed native runtime or FPS measurement exists."
+    },
+    "5_apps_heliboard_play_store": {
+      "state": "INCOMPLETE",
+      "reason": "Incremental APK bundle upgrades + read-only Swift/Xcode/APK audit implemented. Real guest APK installation, typing, and licensed Play Services remain unverified."
+    }
+  },
+  "ios_ipa_built": false,
+  "guest_image_built": false,
+  "iphone_tested": false,
+  "thermal_protection": "PRESERVED",
+  "additional_targets": {
+    "6_nexaris_native_integration": {
+      "state": "INCOMPLETE",
+      "reason": "Nexaris native page and runtime adapter interface exist; compiled Android runtime not registered or launched"
+    },
+    "7_stability_and_memory": {
+      "state": "INCOMPLETE",
+      "reason": "Historic Twoyi native worker crash diagnosed; no fixed host binary/soak test"
+    },
+    "8_ios_permissions_privacy": {
+      "state": "INCOMPLETE",
+      "reason": "Clipboard source only; camera/microphone/location require authorized, verified host bridges"
+    },
+    "9_persistence_and_firstboot": {
+      "state": "INCOMPLETE",
+      "reason": "First boot APK staging regression tests pass, but guest data persistence >7 days not live-tested"
+    },
+    "10_signed_distribution_and_livecontainer": {
+      "state": "INCOMPLETE",
+      "reason": "No signed IPA, LiveContainer install, or iPhone runtime test"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+v14 local validation (2026-11-19)
+Python unittest: 139/139 PASS
+Source-presence: 44/44 PASS
+Release gate: NO-GO (runtime not verified)
+Native HOME Java stub compilation: PASS
+Native panels Java stub compilation: PASS
+Clipboard provider Java behavior harness: 10 assertions PASS
+Root probe Java harness: 7 assertions PASS
+Accent store Java behavior harness: 13 assertions PASS
+Swift source parse: PASS
+Compiled Swift clipboard behavior: PASS
+Android 17 full image build: NOT RUN
+Xcode iOS IPA build: NOT RUN
+iPhone runtime test: NOT RUN
+GitHub Actions: NOT RUN

@@ -1,0 +1,722 @@
+--- v9/README.md
++++ v10/README.md
+@@ -1,46 +1,52 @@
+-# Andarium Red v9 — Native UI + Root/Clipboard Correctness Pass
++# Andarium Red v10 — Five-target source and reliability pass
+ 
+-**Product:** Andarium iOS host and Kernarium Android 17 (LineageOS 24) guest
+-**Base source:** `imxieyi/Kernarium@538de0dddaa0af5779bfbf7bb8e12e0938c3389a`
+-**Artifact type:** source retrofit and prebuild checks; NOT a built Android system image or iOS IPA.
+-**Requirement 6:** iOS signing and physical-device performance/boot tests remain deferred, as requested.
++**Status:** Development source, **not a functional release**. The user's targets 1–5 are not yet certified as working. No signing, custom iOS build, or iPhone install (target 6) has been attempted.
+ 
+-## Improvements over v8
++**Reviewed Kernarium base:** `imxieyi/Kernarium@538de0dddaa0af5779bfbf7bb8e12e0938c3389a` (18 Nov 2026). This package contains source additions and a version-sensitive retrofit script, not the full upstream Android or iOS project.
+ 
+-1. **Android-native responsive HOME is now the default.** `launcher_src/java/dev/twoyi/redlauncher/RedNativeDashboard.java` uses real Android widget elements rather than pretending a static screenshot is a launcher. It uses the actual `PackageManager` for installed-app status, loads real app icons where present, opens real applications, and exposes search, full app drawer, live battery, local time, Android version and diagnostics. The red/AMOLED palette, app order and source reference images are retained. Root status always says *Not verified* unless future device evidence is supplied. The screenshot remains opt-in as a design reference through the menu, never the default. Existing native red Settings and browser panels are unchanged. User-installed apps refresh when the activity returns to foreground.
+-2. **Root verification corrected.** `tools/verify_guest.py` no longer insists `ro.debuggable=1` to recognize working root; Magisk can root a stock `user` image. The checker requires the exact result `su -c id -u` = `0`, and checks Magisk command availability separately. It does **not** grant root or establish that Magisk manages `su`; a real Magisk-boot integration has not been built.
+-3. **Clipboard verification now protects existing contents.** The guest test refuses to modify a clipboard with no plain text (which could contain non-text data it cannot restore). On explicit opt-in it writes synthetic Unicode test text, reads it, restores the original, and re-reads to verify restoration. The clipboard provider's *actual Java source* was exercised against local Android-shaped stubs with 7 behavior checks: authorized text writes/reads, unauthorized UID rejection, `root` call, invalid Base64, oversize, unknown method, and data integrity. The Swift-host and Android-guest source are ready for platform integration but not yet tested on Android 17/iOS.
+-4. **Native resolution and AOT remain planned, not proven.** The native-resolution default preserves explicitly saved settings. Kernarium's AOT translator and `aot_artifact_pipeline.py` require the matching prebuilt Android 17 release, real `fsck.erofs` with zstd, and actual AOT artifact acceptance. There is no verified AOT acceleration or FPS gain in v9. Thermal safety remains enabled; no blanket force-unlimited-FPS patch was made.
+-5. **Apps, keyboard, and Play Store checks.** The 6 pinned APK dependencies, HeliBoard installer and the existing install pipeline are retained. The Android live-verification command now has `--require-play-services` to check package presence for Play Store, Play services and Google Services Framework. These checks do **not** prove package authenticity or compatibility, and no proprietary GApps bundle is shipped. The native HOME visibly labels missing packages as unavailable rather than showing a fake active icon.
++## Changes compared with v9
+ 
+-## Verification
++1. `launcher_src/java/dev/twoyi/redlauncher/RedRootProbe.java` is a new, explicit **Check root** implementation. Tapping the root status in native HOME asynchronously asks `su -c 'id -u'`, requires exit 0 and precisely `0`, and checks `magisk -v` separately; it does **not** request root on launch. A non-Magisk `su` is not mislabeled. Tests cover denial, non-root, missing executable, mock Magisk, and malformed output. These tests **do not prove real root**.
++2. `MainActivity.java` now **lazily decodes concept artwork**, only on a requested mockup preview. Previously all three screenshots decoded at every HOME launch despite the default native dashboard. This is a concrete removal of work from startup; no FPS or boot-time gain has been measured.
++3. `RedNativeDashboard.java` retains native red/black widgets and adds a live user-initiated root test with a bounded worker; it never blocks the main UI thread waiting for `su`. Any real Magisk permission dialogue still belongs to Android/Magisk.
++4. `host_firstboot.py` now guards the first-boot APK installer by `GuestRunMark`, so duplicate boot-complete notifications do not cause overlapping installers for the same run. Missing optional bundled APKs are explicitly logged.
++5. `tools/magisk_boot_preflight.py` checks official Magisk v31.1 bytes **and** the basic kernel-less `init_boot` v3/v4 image structure. This is a **non-destructive prerequisite audit**; it neither modifies a guest nor establishes compatibility between Magisk init interception and Kernarium's UML boot path.
++6. `tools/verify_guest.py` can now require actual background clipboard permission granted by Android (`--require-clipboard-privilege`) and confirm HeliBoard is the selected IME (`--require-active-keyboard`). Merely declaring the permission or installing a keyboard is not a pass.
++7. Added regression and pure-Java root-probe tests. The existing integration pipeline, red panels, native-resolution default, AOT tooling, Google-services checks, signed-APK pins, and explicit clipboard actions are retained.
+ 
+-Run from this package directory:
++## Verification performed in this environment
+ 
+ ```bash
+ python3 -m unittest discover -s tests -q
+ python3 tools/native_home_stub_compile.py
+ python3 tools/android_panel_stub_compile.py
+ python3 tools/clipboard_provider_behavior_test.py
++python3 tools/root_probe_java_test.py
+ python3 tools/java_compile_smoke.py
+ swiftc -frontend -parse host/*.swift tests/SwiftClipboardHarness.swift
+ python3 tools/prebuild_parity.py --report PREBUILD_PARITY.json
+ ```
+ 
+-**Actual results:** 86/86 Python tests passed, 7/7 clipboard behavior assertions passed, native dashboard Java stub compile PASS, native Settings/browser stub compile PASS, clipboard provider stub compile PASS, Swift syntax parse PASS. 27/27 source-presence checks passed, but `release_gate=NO-GO` because runtime requirements remain unverified.
++**Results:** 100/100 Python unit/integration tests passed; native Java HOME and Settings/browser compile against **local stubs**, Java root-probe harness 7 assertions passed, clipboard-provider harness 7 assertions passed, Swift parse passed. These are NOT Android SDK/Soong or Xcode builds. The source-presence gate passed 33/33; the release gate remains **NO-GO**.
+ 
+-## Exact blocker matrix for targets 1–5
++## Exact targets and remaining work
+ 
+-| Goal | What exists in v9 | Still missing for true completion |
++| User target | Verified source advances | Missing for 100% functional parity |
+ |---|---|---|
+-| 1. Guest root + Magisk | Android 17 `userdebug` su path, official verified Magisk manager staging, distinct root/Magisk verification | Magisk-compatible UML init/ramdisk integration and live Magisk-managed `su` verification; the diagnostic `su` is a different mechanism |
+-| 2. Red Settings/browser | Native Android Settings and browser panels, real app launcher + native HOME, reference artwork | Real Android SDK/Soong compilation; on-screen UI comparison and functional browser/extension tests |
+-| 3. Android 17 + clipboard | Existing upstream LineageOS 24 source/guest, platform provider, host controls, authenticated ADB command protocol, local behavior tests | Android 17 image build embedding platform-signed clipboard provider and end-to-end iOS↔Android text roundtrip |
+-| 4. Native resolution + AOT | Native default, user-resolution preservation, upstream AOT build/verify tooling | Genuine matching native AOT artifact, iOS framework integration, thermal-controlled FPS and boot benchmarks |
+-| 5. Apps, Play Store + HeliBoard | Verified official APK pins and first-boot installer, Android installed-app discovery, keyboard setup link | Actual guest install/IME typing validation; Google Play Store/services separately licensed and proven compatible |
++| 1. Magisk-managed root | Official Magisk manager pin, diagnostics for exact UID 0 + Magisk, `init_boot` input validation, separate userdebug `su` route | Rebuilt Android guest with a functioning Magisk init/daemon integration and live `su` proof. The normal accepted `user` image does not include root. |
++| 2. Real red Settings and browser | Native Android HOME, clickable Settings/browser panels, installed-app drawer and safe URL routing | Full Android 17 compilation, actual settings/Chromium behavior and UI comparison against reference images. |
++| 3. Android 17 with clipboard | Upstream LineageOS 24 guest, platform-signed guest provider, Swift explicit transfer, Android 17 signature-permission verification | Android image with provider; live authenticated host/guest integration and full two-direction iOS clipboard test. |
++| 4. Full native resolution, AOT, fast boot | Native-resolution default preserving user's choice, smaller HOME startup workload, AOT build+verification script | Matching Android 17 AOT artifact and packed native iOS framework, plus measured boot/FPS and thermal behavior. No claim of 60 or 120 FPS. |
++| 5. Apps, keyboard, Play Store | Checksummed official Magisk/Titanium/F-Droid/Termux/App Manager/HeliBoard APKs; first-boot loader and active keyboard verification | Actual installation/typing/browser behavior; a legitimately sourced, compatible Play Store + Play services image; not bundled here. |
+ 
+-## Build separation
++**Necessary distinction:** User target 6 (custom IPA signing and iPhone tests) remains deferred. Some Android 17 guest builds and execution tests are nevertheless necessary to finish targets 1–5; static source files alone cannot establish that privilege, graphics performance, or boot integration works. We do not claim otherwise.
+ 
+-The project's **first custom signed iOS IPA build**, installation and device validation (item 6) were intentionally not attempted. However **a preliminary Android image build is necessary to resolve items 1–4**: source-only tests cannot prove a privileged provider or Magisk init integration. It is not possible to guarantee functional 100% parity before compiling/booting at least the Android guest. The upstream prebuilt Andarium app is a working baseline, not evidence that this modified build will work.
++## Integration and read-only validation
+ 
+-Use `integrate_andarium.py --kernarium <checkout> --dry-run` to inspect edits before applying. The script is not a universal patch for other upstream revisions, and `README.md` never substitutes for build verification.
++```bash
++python3 integrate_andarium.py --kernarium /path/to/Kernarium --source . --dry-run
++python3 tools/prebuild_parity.py --kernarium /path/to/Kernarium --report PREBUILD_PARITY.json
++python3 tools/magisk_boot_preflight.py --magisk-apk /path/to/Magisk-v31.1.apk --init-boot /path/to/init_boot.img
++```
++
++To integrate guest and host source (not a build), omit `--dry-run`. You can add official APKs individually with options of `integrate_andarium.py --help`. **Do not patch accepted Android images in place or override the project's release validation.**
+--- v9/TEST_RESULTS.txt
++++ v10/TEST_RESULTS.txt
+@@ -1,8 +1,15 @@
+-76/76 Python unit tests PASS
+-12/12 Java website policy functional assertions PASS
+-Java RedPanelActivity API-stub compile PASS (not Android SDK build)
+-Java Android clipboard provider API-stub compile PASS (not Android SDK build)
+-Swift host sources -frontend -parse PASS (not Xcode build)
+-23/23 source-presence gates PASS
+-Full runtime/release gate: NO-GO
+-No Android 17 guest image compiled, no Magisk root proof, no AOT framework built, no signed IPA.
++Andarium Red v10 local validation
++Python unit suite: 100/100 PASS
++Java native HOME stub compiler: PASS (not Android SDK)
++Java native Settings/browser stub compiler: PASS (not Android SDK)
++Android clipboard provider behavior: 7/7 PASS (local stubs)
++Java root-probe behavior harness: 7/7 PASS
++Swift source parse: PASS (not Xcode build)
++Source-presence gates: 33/33 PASS
++Android 17 system build: NOT RUN
++Actual Magisk root: NOT VERIFIED
++Actual iOS clipboard roundtrip: NOT VERIFIED
++AOT native artifact: NOT BUILT
++Actual iPhone performance: NOT MEASURED
++Custom iOS build/signing: NOT RUN (target 6 deferred)
++Release gate: NO-GO
+--- v9/host_firstboot.py
++++ v10/host_firstboot.py
+@@ -111,9 +111,18 @@
+ INSTALL_METHOD = '''    /// First-boot import of ordinary Android applications bundled with this iOS app.
+     /// No global root or platform certificate is required to install regular APKs.
+     /// Guest data may have been erased, so query Android rather than remembering a host flag.
++    private var redInstallerActiveRun: GuestRunMark?
++
+     private func redInstallBundledAppsAfterBoot() async {
+         guard normalRun else { return }
+         let startedRun = runMark
++        // Console boot-complete can be observed more than once. Never run two
++        // installers against one guest's package manager concurrently.
++        guard redInstallerActiveRun != startedRun else { return }
++        redInstallerActiveRun = startedRun
++        defer {
++            if redInstallerActiveRun == startedRun { redInstallerActiveRun = nil }
++        }
+         // Android's data storage may take longer than sys.boot_completed to mount.
+         var isReady = false
+         for _ in 0..<50 {
+@@ -128,7 +137,10 @@
+                 let existing = try await operations.shell("pm path " + package.androidPackage, limit: .seconds(10))
+                 if existing.exitCode == 0 && existing.text.hasPrefix("package:") { continue }
+                 // Missing official APKs are optional. A bad APK is never installed.
+-                guard RedGuestApkInstaller.bundledURL(for: package) != nil else { continue }
++                guard RedGuestApkInstaller.bundledURL(for: package) != nil else {
++                    print("Andarium Red: optional APK absent from bundle: " + package.filename)
++                    continue
++                }
+                 let url = try RedGuestApkInstaller.verifiedURL(for: package)
+                 _ = try await operations.installApk(at: url, update: { _ in })
+                 // Never mark a failed install successful. Inspect Android's actual package database.
+--- v9/launcher_src/java/dev/twoyi/redlauncher/MainActivity.java
++++ v10/launcher_src/java/dev/twoyi/redlauncher/MainActivity.java
+@@ -64,16 +64,9 @@
+         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_HIDE_NAVIGATION | View.SYSTEM_UI_FLAG_FULLSCREEN |
+                 View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+         androidVersion = Build.VERSION.RELEASE;
++        // Do not decode multi-megabyte concept artwork during a native HOME startup.
++        // Load each reference image only if the user explicitly opens that preview.
+         designs = new Bitmap[3];
+-        try {
+-            designs[HOME] = readAsset("home.png");
+-            designs[SETTINGS] = readAsset("settings.png");
+-            designs[BROWSER_PREVIEW] = readAsset("browser.png");
+-        } catch (Exception ex) {
+-            new AlertDialog.Builder(this).setMessage("Missing reference artwork: " + ex.getMessage())
+-                    .setPositiveButton("Close", (d,w)->finish()).show();
+-            return;
+-        }
+         // Native Android widgets are the default, not the static design mockup.
+         dashboard = new RedNativeDashboard(this);
+         setContentView(dashboard);
+@@ -110,6 +103,16 @@
+         try (InputStream stream = getAssets().open(name)) { return BitmapFactory.decodeStream(stream); }
+     }
+ 
++    private Bitmap designForPreview(int index) {
++        if (index < 0 || index >= designs.length) return null;
++        if (designs[index] == null) {
++            String file = index == HOME ? "home.png" : index == SETTINGS ? "settings.png" : "browser.png";
++            try { designs[index] = readAsset(file); }
++            catch (Exception failure) { toast("Reference preview unavailable: " + failure.getMessage()); }
++        }
++        return designs[index];
++    }
++
+     @Override public void onBackPressed() {
+         if (screen != HOME && skin != null) { screen = HOME; skin.invalidate(); }
+         else super.onBackPressed();
+@@ -125,7 +128,7 @@
+         SkinView() { super(MainActivity.this);  }
+         @Override protected void onDraw(Canvas canvas) {
+             canvas.drawColor(Color.BLACK);
+-            Bitmap src = designs[screen];
++            Bitmap src = designForPreview(screen);
+             if (src == null) return;
+             // Preserve the generated reference aspect ratio while filling modern
+             // iPhone-shaped guest viewports; avoid visible letterboxing on small
+--- v9/launcher_src/java/dev/twoyi/redlauncher/RedNativeDashboard.java
++++ v10/launcher_src/java/dev/twoyi/redlauncher/RedNativeDashboard.java
+@@ -40,6 +40,9 @@
+     private final Handler ticker = new Handler(Looper.getMainLooper());
+     private TextView timeView;
+     private TextView batteryView;
++    private TextView rootView;
++    private String rootLabel = "Root access: Not checked";
++    private boolean rootProbeRunning;
+     private final Runnable updateStatus = new Runnable() {
+         @Override public void run() {
+             if (timeView != null) timeView.setText(new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date()));
+@@ -145,12 +148,14 @@
+         TextView environment = label("A N D A R I U M   E N V I R O N M E N T", 11, MUTED, false);
+         environment.setGravity(Gravity.CENTER);
+         content.addView(environment);
+-        TextView root = label("Root access: Not verified", 14, RED, true);
++        TextView root = label(rootLabel, 14, RED, true);
++        rootView = root;
+         root.setGravity(Gravity.CENTER);
+         LinearLayout.LayoutParams r = new LinearLayout.LayoutParams(-1, dp(40));
+         r.topMargin = dp(14);
+         root.setBackground(background(CARD, RED, 18));
+-        root.setOnClickListener(v -> owner.openRedStatus());
++        root.setContentDescription("Tap to check Android guest root; may request superuser access");
++        root.setOnClickListener(v -> checkRootOnUserTap());
+         content.addView(root, r);
+ 
+         TextView search = label("⌕   Search installed Android apps", 17, MUTED, false);
+@@ -221,6 +226,23 @@
+         updateStatus.run();
+     }
+ 
++    /** User-initiated, off-main-thread root/Magisk verification. Never probe on boot. */
++    private void checkRootOnUserTap() {
++        if (rootProbeRunning) return;
++        rootProbeRunning = true;
++        rootLabel = "Checking root (permission may be requested)…";
++        if (rootView != null) rootView.setText(rootLabel);
++        Thread thread = new Thread(() -> {
++            RedRootProbe.Result result = RedRootProbe.check(RedRootProbe.PROCESS_RUNNER);
++            owner.runOnUiThread(() -> {
++                rootProbeRunning = false;
++                rootLabel = result.label();
++                if (rootView != null) rootView.setText(rootLabel);
++            });
++        }, "red-root-check");
++        thread.start();
++    }
++
+     private boolean appAvailable(String packageName) {
+         try { owner.getPackageManager().getPackageInfo(packageName, 0); return true; }
+         catch (PackageManager.NameNotFoundException absent) { return false; }
+--- v9/launcher_src/java/dev/twoyi/redlauncher/RedRootProbe.java
++++ v10/launcher_src/java/dev/twoyi/redlauncher/RedRootProbe.java
+@@ -0,0 +1,67 @@
++// SPDX-License-Identifier: Apache-2.0
++package dev.twoyi.redlauncher;
++
++import java.io.ByteArrayOutputStream;
++import java.io.InputStream;
++import java.nio.charset.StandardCharsets;
++import java.util.concurrent.TimeUnit;
++
++/** Only run after a user explicitly taps Check root. No root claim is inferred
++ * from a manager app's presence. Every command is a fixed argv array. */
++final class RedRootProbe {
++    interface Runner { CommandResult run(String... argv) throws Exception; }
++    static final class CommandResult {
++        final int exit; final String output;
++        CommandResult(int exit, String output) { this.exit = exit; this.output = output; }
++    }
++    static final class Result {
++        final boolean root; final boolean magisk; final String magiskVersion;
++        Result(boolean root, boolean magisk, String magiskVersion) {
++            this.root = root; this.magisk = magisk; this.magiskVersion = magiskVersion;
++        }
++        String label() {
++            if (!root) return "Root access: Not granted / unavailable";
++            return magisk ? "Root: UID 0 · Magisk " + magiskVersion : "Root: UID 0 · Magisk not verified";
++        }
++    }
++
++    private static final int OUTPUT_LIMIT = 1024;
++    static final Runner PROCESS_RUNNER = argv -> {
++        Process process = new ProcessBuilder(argv).redirectErrorStream(true).start();
++        try {
++            if (!process.waitFor(15, TimeUnit.SECONDS)) {
++                process.destroyForcibly();
++                return new CommandResult(-1, "timeout");
++            }
++            try (InputStream stream = process.getInputStream(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
++                byte[] block = new byte[256];
++                int n;
++                while ((n = stream.read(block)) != -1 && out.size() <= OUTPUT_LIMIT) {
++                    out.write(block, 0, n);
++                }
++                return new CommandResult(process.exitValue(), out.toString(StandardCharsets.UTF_8.name()));
++            }
++        } finally {
++            if (process.isAlive()) process.destroyForcibly();
++        }
++    };
++
++    static Result check(Runner runner) {
++        final CommandResult su;
++        try { su = runner.run("su", "-c", "id -u"); }
++        catch (Exception failed) { return new Result(false, false, ""); }
++        // No heuristic string matching: the command must exit zero and return precisely UID 0.
++        if (su.exit != 0 || !"0".equals(su.output.trim())) return new Result(false, false, "");
++        try {
++            CommandResult m = runner.run("su", "-c", "magisk -v");
++            String version = m.output.trim();
++            if (m.exit == 0 && version.length() > 0 && version.length() <= 96
++                    && version.matches("[A-Za-z0-9._+() -]+")) {
++                return new Result(true, true, version);
++            }
++        } catch (Exception ignored) { /* su can work without Magisk. */ }
++        return new Result(true, false, "");
++    }
++
++    private RedRootProbe() {}
++}
+--- v9/tests/RedRootProbeHarness.java
++++ v10/tests/RedRootProbeHarness.java
+@@ -0,0 +1,34 @@
++package dev.twoyi.redlauncher;
++
++public final class RedRootProbeHarness {
++    private static void check(boolean ok, String message) {
++        if (!ok) throw new AssertionError(message);
++    }
++    public static void main(String[] ignored) {
++        RedRootProbe.Result missing = RedRootProbe.check(argv -> { throw new java.io.IOException("missing su"); });
++        check(!missing.root && !missing.magisk, "missing su cannot imply root");
++        RedRootProbe.Result denied = RedRootProbe.check(argv -> new RedRootProbe.CommandResult(1, "0"));
++        check(!denied.root, "nonzero exit fails even with UID 0 in output");
++        RedRootProbe.Result shell = RedRootProbe.check(argv -> new RedRootProbe.CommandResult(0, "2000\n"));
++        check(!shell.root, "shell UID cannot pass");
++        RedRootProbe.Result weak = RedRootProbe.check(argv -> new RedRootProbe.CommandResult(0, "0 extra"));
++        check(!weak.root, "UID must be exact");
++        RedRootProbe.Result rooted = RedRootProbe.check(argv -> {
++            if (argv.length == 3 && argv[2].equals("id -u")) return new RedRootProbe.CommandResult(0, "0\n");
++            return new RedRootProbe.CommandResult(127, "not found");
++        });
++        check(rooted.root && !rooted.magisk, "su alone is not Magisk-managed root");
++        RedRootProbe.Result magisk = RedRootProbe.check(argv -> {
++            if (argv.length == 3 && argv[2].equals("id -u")) return new RedRootProbe.CommandResult(0, "0\n");
++            if (argv.length == 3 && argv[2].equals("magisk -v")) return new RedRootProbe.CommandResult(0, "31.1\n");
++            throw new AssertionError("Unexpected command arguments");
++        });
++        check(magisk.root && magisk.magisk && magisk.label().contains("31.1"), "real su + magisk proof");
++        RedRootProbe.Result malicious = RedRootProbe.check(argv -> {
++            if (argv[2].equals("id -u")) return new RedRootProbe.CommandResult(0, "0");
++            return new RedRootProbe.CommandResult(0, "31.1;evil");
++        });
++        check(malicious.root && !malicious.magisk, "reject unexpected output");
++        System.out.println("RED_ROOT_PROBE_7_PASS");
++    }
++}
+--- v9/tests/test_v10_live_gate.py
++++ v10/tests/test_v10_live_gate.py
+@@ -0,0 +1,46 @@
++# SPDX-License-Identifier: GPL-2.0-or-later
++import sys
++import unittest
++from pathlib import Path
++from unittest.mock import patch
++ROOT=Path(__file__).resolve().parents[1]
++sys.path.insert(0,str(ROOT/'tools'))
++import verify_guest
++
++class LiveGateTests(unittest.TestCase):
++    def test_clipboard_permission_granted(self):
++        def answer(_adb,*args):
++            if args[:2]==('pm','path'):return 'package:/product/app/TwoyiRedClipboard/base.apk'
++            return 'requested permissions:\n android.permission.READ_CLIPBOARD_IN_BACKGROUND: granted=true\n'
++        with patch.object(verify_guest,'adb_run',side_effect=answer):
++            self.assertIn('granted',verify_guest.clipboard_privilege('adb'))
++
++    def test_clipboard_permission_not_granted(self):
++        def answer(_adb,*args):
++            if args[:2]==('pm','path'):return 'package:/system/priv-app/TwoyiRedClipboard/base.apk'
++            return 'android.permission.READ_CLIPBOARD_IN_BACKGROUND: granted=false'
++        with patch.object(verify_guest,'adb_run',side_effect=answer):
++            with self.assertRaisesRegex(AssertionError,'lacks Android signature'):
++                verify_guest.clipboard_privilege('adb')
++
++    def test_clipboard_permission_missing(self):
++        with patch.object(verify_guest,'adb_run',return_value='not installed'):
++            with self.assertRaisesRegex(AssertionError,'not installed'):
++                verify_guest.clipboard_privilege('adb')
++
++    def test_heliboard_active(self):
++        def answer(_adb,*args):
++            if args[:2]==('pm','path'):return 'package:/data/app/helium314.keyboard/base.apk'
++            return 'helium314.keyboard/.LatinIME'
++        with patch.object(verify_guest,'adb_run',side_effect=answer):
++            self.assertIn('selected',verify_guest.active_heliboard('adb'))
++
++    def test_heliboard_not_active(self):
++        def answer(_adb,*args):
++            if args[:2]==('pm','path'):return 'package:/data/app/helium314.keyboard/base.apk'
++            return 'com.android.inputmethod.latin/.LatinIME'
++        with patch.object(verify_guest,'adb_run',side_effect=answer):
++            with self.assertRaisesRegex(AssertionError,'not the active'):
++                verify_guest.active_heliboard('adb')
++
++if __name__=='__main__':unittest.main()
+--- v9/tests/test_v10_magisk_preflight.py
++++ v10/tests/test_v10_magisk_preflight.py
+@@ -0,0 +1,47 @@
++# SPDX-License-Identifier: GPL-2.0-or-later
++import sys
++import tempfile
++import unittest
++import struct
++from pathlib import Path
++from unittest.mock import patch
++ROOT=Path(__file__).resolve().parents[1]
++sys.path.insert(0,str(ROOT/'tools'))
++import magisk_boot_preflight as m
++
++class BootPreflightTests(unittest.TestCase):
++    def test_rejects_missing_bootimage(self):
++        with self.assertRaises(ValueError): m.inspect_init_boot(Path('/nonexistent/boot.img'))
++
++    def test_rejects_non_android_boot(self):
++        with tempfile.TemporaryDirectory() as td:
++            p=Path(td)/'init_boot.img';p.write_bytes(b'A'*64)
++            with self.assertRaises(ValueError):m.inspect_init_boot(p)
++
++    def test_reads_kernel_less_v4_header(self):
++        with tempfile.TemporaryDirectory() as td:
++            p=Path(td)/'init_boot.img'
++            data=bytearray(4096);data[:8]=b'ANDROID!'
++            struct.pack_into('<4I',data,8,0,512,0,1584)
++            struct.pack_into('<I',data,40,4)
++            p.write_bytes(data)
++            result=m.inspect_init_boot(p)
++            self.assertEqual(result['boot_header_version'],4)
++            self.assertEqual(result['kernel_bytes'],0)
++            self.assertIn('UNVERIFIED',result['magisk_boot_interception_compatible'])
++
++    def test_rejects_kernel_in_initboot(self):
++        with tempfile.TemporaryDirectory() as td:
++            p=Path(td)/'init_boot.img'
++            data=bytearray(4096);data[:8]=b'ANDROID!'
++            struct.pack_into('<4I',data,8,1024,512,0,1584)
++            struct.pack_into('<I',data,40,4)
++            p.write_bytes(data)
++            with self.assertRaisesRegex(ValueError,'no kernel'):m.inspect_init_boot(p)
++
++    def test_no_fabricated_magisk_asset_proof(self):
++        with tempfile.TemporaryDirectory() as td:
++            p=Path(td)/'magisk.apk';p.write_bytes(b'not official')
++            with self.assertRaisesRegex(ValueError,'checksum'):m.inspect_magisk(p)
++
++if __name__=='__main__':unittest.main()
+--- v9/tests/test_v10_progress.py
++++ v10/tests/test_v10_progress.py
+@@ -0,0 +1,40 @@
++# SPDX-License-Identifier: GPL-2.0-or-later
++import subprocess
++import sys
++import unittest
++from pathlib import Path
++ROOT = Path(__file__).resolve().parents[1]
++
++class ProgressTests(unittest.TestCase):
++    def test_assets_not_decoded_on_launch(self):
++        main=(ROOT/'launcher_src/java/dev/twoyi/redlauncher/MainActivity.java').read_text()
++        creation=main.split('onCreate(Bundle state)',1)[1].split('onResume()',1)[0]
++        self.assertIn('designs = new Bitmap[3]',creation)
++        self.assertNotIn('readAsset(',creation)
++        self.assertIn('Bitmap src = designForPreview(screen);',main)
++        self.assertIn('designs[index] = readAsset(file);',main)
++
++    def test_explicit_root_check_and_nonblocking_ui(self):
++        main=(ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedNativeDashboard.java').read_text()
++        self.assertIn('checkRootOnUserTap()',main)
++        self.assertIn('new Thread(() ->',main)
++        self.assertIn('RedRootProbe.check(RedRootProbe.PROCESS_RUNNER)',main)
++        self.assertIn('rootProbeRunning',main)
++        probe=(ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedRootProbe.java').read_text()
++        self.assertIn('"0".equals(su.output.trim())',probe)
++        self.assertIn('if (su.exit != 0',probe)
++        self.assertNotIn('Runtime.getRuntime().exec("',probe)
++
++    def test_root_probe_harness(self):
++        p=subprocess.run([sys.executable,str(ROOT/'tools/root_probe_java_test.py')],text=True,capture_output=True)
++        self.assertEqual(p.returncode,0,p.stderr)
++        self.assertIn('RED_ROOT_PROBE_7_PASS',p.stdout)
++
++    def test_installer_is_run_scoped_and_single_flight(self):
++        host=(ROOT/'host_firstboot.py').read_text()
++        self.assertIn('private var redInstallerActiveRun: GuestRunMark?',host)
++        self.assertIn('guard redInstallerActiveRun != startedRun',host)
++        self.assertIn('defer {',host)
++        self.assertIn('APK absent from bundle:',host)
++
++if __name__=='__main__':unittest.main()
+--- v9/tests/test_v9_functional.py
++++ v10/tests/test_v9_functional.py
+@@ -27,7 +27,8 @@
+         self.assertIn('getPackageInfo(packageName, 0)', source)
+         self.assertIn('getApplicationIcon(tile.packageName)', source)
+         self.assertIn('Not installed', source)
+-        self.assertIn('Root access: Not verified', source)
++        self.assertIn('Root access: Not checked', source)
++        self.assertIn('checkRootOnUserTap()',source)
+         self.assertIn('openRedAppDrawer()', source)
+         self.assertNotIn('Root access: Active', source)
+         self.assertIn('ticker.removeCallbacks(updateStatus)', source)
+--- v9/tools/magisk_boot_preflight.py
++++ v10/tools/magisk_boot_preflight.py
+@@ -0,0 +1,88 @@
++#!/usr/bin/env python3
++# SPDX-License-Identifier: GPL-2.0-or-later
++"""Non-destructive audit of the real Magisk boot integration inputs.
++
++This does not patch an image, change verified release metadata, or claim that
++Andarium's UML boot path is compatible. A working guest requires Android's own
++build/release verification and an actual boot before Magisk can be certified.
++"""
++from __future__ import annotations
++import argparse
++import hashlib
++import json
++import struct
++import zipfile
++from pathlib import Path
++
++MAGISK_SHA256 = '89cefac0a318afa39fb3880c45c87b036c05bc1ebf02a7a715b7f8d7c26ac6e7'
++MAGISK_BYTES = 10679283
++ESSENTIAL = {
++    'assets/boot_patch.sh': 'Magisk official boot patch logic',
++    'assets/util_functions.sh': 'Magisk patch helpers',
++    'lib/arm64-v8a/libmagiskinit.so': 'arm64 boot-time init binary',
++    'lib/arm64-v8a/libmagiskboot.so': 'arm64 boot image packing binary',
++}
++
++
++def digest_file(path: Path) -> str:
++    h = hashlib.sha256()
++    with path.open('rb') as f:
++        for block in iter(lambda: f.read(1 << 20), b''):
++            h.update(block)
++    return h.hexdigest()
++
++
++def inspect_magisk(apk: Path) -> dict:
++    if not apk.is_file() or apk.stat().st_size != MAGISK_BYTES or digest_file(apk) != MAGISK_SHA256:
++        raise ValueError('Official Magisk v31.1 APK checksum/length mismatch')
++    with zipfile.ZipFile(apk) as jar:
++        files = set(jar.namelist())
++        missing = sorted(set(ESSENTIAL) - files)
++        # Never assume an APK package layout is identical across Magisk releases.
++        extras = sorted(x for x in files if x.startswith('lib/arm64-v8a/') and 'magisk' in x.lower())
++        return {'verified_release_sha256': MAGISK_SHA256,
++                'essential_parts_present': not missing, 'missing': missing,
++                'arm64_magisk_binaries': extras,
++                'can_stage_boot_patcher': not missing}
++
++
++def inspect_init_boot(path: Path) -> dict:
++    if not path.is_file():
++        raise ValueError('init_boot image not found')
++    with path.open('rb') as f:
++        header = f.read(48)
++    if len(header) < 44 or header[:8] != b'ANDROID!':
++        raise ValueError('Not a standard Android init_boot image (missing ANDROID! header)')
++    # Android boot image header v3/v4 layout, from AOSP bootimg.h.
++    kernel_size, ramdisk_size, _os_version, header_size = struct.unpack_from('<4I', header, 8)
++    version = struct.unpack_from('<I', header, 40)[0]
++    if version not in (3, 4) or header_size < 1580 or ramdisk_size < 1:
++        raise ValueError('Unexpected init_boot header version, size, or missing ramdisk')
++    if kernel_size != 0:
++        raise ValueError('init_boot should carry no kernel; got nonzero kernel size')
++    return {'boot_header_version': version, 'kernel_bytes': kernel_size,
++            'ramdisk_bytes': ramdisk_size, 'image_sha256': digest_file(path),
++            'boot_structure_validated': True,
++            'magisk_boot_interception_compatible': 'UNVERIFIED: Kernarium UML boot packaging differs from a physical phone'}
++
++
++def main():
++    p = argparse.ArgumentParser(description=__doc__)
++    p.add_argument('--magisk-apk', type=Path, required=True)
++    p.add_argument('--init-boot', type=Path, required=True)
++    p.add_argument('--report', type=Path)
++    args = p.parse_args()
++    a = inspect_magisk(args.magisk_apk)
++    b = inspect_init_boot(args.init_boot)
++    report = {'magisk': a, 'init_boot': b,
++              'prepared_for_boot_patch_trial': bool(a['can_stage_boot_patcher']),
++              'magisk_root_working': False, 'guest_17_boot_verified': False,
++              'notes': ['Never replace a boot image in an accepted release in place.',
++                        'Requires original upstream Magisk patcher on a compatible guest, new release signing and boot tests.',
++                        'Kernel-less UML boot and Magisk init interception still require integration validation.']}
++    result = json.dumps(report, indent=2) + '\n'
++    if args.report: args.report.write_text(result)
++    print(result)
++
++if __name__ == '__main__':
++    main()
+--- v9/tools/native_home_stub_compile.py
++++ v10/tools/native_home_stub_compile.py
+@@ -14,7 +14,7 @@
+ ROOT = Path(__file__).resolve().parents[1]
+ STUBS = dict(base)
+ STUBS.update({
+-'dev/twoyi/redlauncher/MainActivity.java': '''package dev.twoyi.redlauncher; public class MainActivity extends android.app.Activity {public void openRedMenu(){} public void openRedStatus(){} public void openRedSearch(){} public void openRedAppDrawer(){} }''',
++'dev/twoyi/redlauncher/MainActivity.java': '''package dev.twoyi.redlauncher; public class MainActivity extends android.app.Activity {public void openRedMenu(){} public void openRedStatus(){} public void openRedSearch(){} public void openRedAppDrawer(){} public void runOnUiThread(Runnable r){r.run();} }''',
+ 'android/content/Context.java': '''package android.content; public class Context {public android.content.res.Resources getResources(){return null;} public android.content.pm.PackageManager getPackageManager(){return null;} public void startActivity(Intent i){} public Intent registerReceiver(Object r,IntentFilter f){return null;}}''',
+ 'android/content/Intent.java': '''package android.content; public class Intent {public static final String ACTION_VIEW="",ACTION_BATTERY_CHANGED=""; public Intent(String a){} public Intent(String a,android.net.Uri uri){} public Intent(Context c,Class<?> cls){} public String getStringExtra(String x){return null;} public int getIntExtra(String k,int d){return d;} }''',
+ 'android/content/IntentFilter.java': '''package android.content; public class IntentFilter {public IntentFilter(String s){} }''',
+@@ -40,7 +40,7 @@
+         for name,src in STUBS.items():
+             f=tmp/name;f.parent.mkdir(parents=True,exist_ok=True);f.write_text(src)
+         java=ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedNativeDashboard.java'
+-        files=[*tmp.rglob('*.java'),java]
++        files=[*tmp.rglob('*.java'),java,ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedRootProbe.java']
+         p=subprocess.run(['javac','-d',str(tmp/'classes'),*(str(f) for f in files)],capture_output=True,text=True)
+         if p.returncode:raise SystemExit('NATIVE HOME JAVA STUB COMPILE FAILED: '+p.stderr)
+         print('NATIVE_HOME_JAVA_STUB_COMPILE_PASS (NOT an Android SDK build)')
+--- v9/tools/prebuild_parity.py
++++ v10/tools/prebuild_parity.py
+@@ -47,7 +47,7 @@
+     add('Android-native responsive HOME instead of a screenshot skin',
+         'new RedNativeDashboard(this)' in launcher and 'getPackageInfo(packageName, 0)' in native_home
+         and 'getApplicationIcon(tile.packageName)' in native_home
+-        and 'Root access: Not verified' in native_home,
++        and 'Root access: Not checked' in native_home,
+         'Android widgets and real application icons; source stub compilation passed, device appearance untested')
+     add('Actual installed-app drawer and search',
+         'getInstalledApplications(0)' in launcher and 'LauncherCatalog.filter' in launcher
+@@ -134,6 +134,31 @@
+         and 'root_proven_in_guest' in root_check,
+         'Diagnostic su path inspected; no Magisk-managed root proof')
+ 
++    root_probe = (root / 'launcher_src/java/dev/twoyi/redlauncher/RedRootProbe.java').read_text()
++    add('Explicit user-initiated in-guest root and Magisk verification',
++        'checkRootOnUserTap()' in native_home and 'RedRootProbe.check' in native_home
++        and '"0".equals(su.output.trim())' in root_probe
++        and 'magisk -v' in root_probe,
++        'Shows only observed root result, never infers root from APK presence')
++    add('Lazy loading original artwork for native HOME performance',
++        'designForPreview(screen)' in launcher
++        and 'designs[index] = readAsset(file)' in launcher,
++        'Reference bitmaps not decoded on every native HOME launch')
++    add('Prevent duplicate first-boot APK installers per guest run',
++        'redInstallerActiveRun != startedRun' in host,
++        'Boot-complete notifications cannot start overlapping installations in one guest run')
++    add('Explicit clipboard signature permission check',
++        'def clipboard_privilege(' in live_check
++        and 'READ_CLIPBOARD_IN_BACKGROUND' in live_check,
++        'Checks granted permission in live Android package registry, not only manifest declaration')
++    add('Verify active HeliBoard, not just package registration',
++        'def active_heliboard(' in live_check and 'default_input_method' in live_check,
++        'Requires selected IME; actual Android typing test remains outstanding')
++    boot_preflight = (root / 'tools/magisk_boot_preflight.py').read_text()
++    add('Validate official Magisk boot and kernel-less init_boot inputs',
++        'inspect_init_boot' in boot_preflight and 'MAGISK_SHA256' in boot_preflight,
++        'Non-destructive input check; no Magisk runtime or root integration claimed')
++
+     add('First-boot ADB installation logic',
+         'redInstallBundledAppsAfterBoot' in host and 'verify_launcher' in host,
+         'source integrator only; iOS build and guest install not verified')
+--- v9/tools/root_probe_java_test.py
++++ v10/tools/root_probe_java_test.py
+@@ -0,0 +1,15 @@
++#!/usr/bin/env python3
++"""Pure Java root verification harness; not an Android runtime proof."""
++import subprocess
++import tempfile
++from pathlib import Path
++ROOT = Path(__file__).resolve().parents[1]
++if __name__ == '__main__':
++    with tempfile.TemporaryDirectory() as td:
++        d=Path(td)
++        files=[ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedRootProbe.java',ROOT/'tests/RedRootProbeHarness.java']
++        result=subprocess.run(['javac','-d',str(d),*map(str,files)],capture_output=True,text=True)
++        if result.returncode: raise SystemExit(result.stderr)
++        result=subprocess.run(['java','-cp',str(d),'dev.twoyi.redlauncher.RedRootProbeHarness'],capture_output=True,text=True)
++        if result.returncode: raise SystemExit(result.stderr)
++        print(result.stdout.strip())
+--- v9/tools/verify_guest.py
++++ v10/tools/verify_guest.py
+@@ -76,6 +76,28 @@
+     if expected not in output:
+         raise AssertionError(f'Expected Android component not registered: {expected}')
+     return expected
++
++
++def clipboard_privilege(adb: str) -> str:
++    """Verify Android 17's signature-granted background clipboard capability.
++
++    A manifest declaration alone does NOT establish this permission was granted.
++    This is a precondition, not proof of a successful clipboard round-trip.
++    """
++    require_package(adb, 'dev.twoyi.redclipboard')
++    report = adb_run(adb, 'dumpsys', 'package', 'dev.twoyi.redclipboard')
++    import re
++    if not re.search(r'(?m)^\s*android\.permission\.READ_CLIPBOARD_IN_BACKGROUND:\s*granted=true\b', report):
++        raise AssertionError('Clipboard provider lacks Android signature permission READ_CLIPBOARD_IN_BACKGROUND')
++    return 'Background clipboard permission granted to platform provider'
++
++
++def active_heliboard(adb: str) -> str:
++    require_package(adb, 'helium314.keyboard')
++    active = adb_run(adb, 'settings', 'get', 'secure', 'default_input_method')
++    if not active.startswith('helium314.keyboard/'):
++        raise AssertionError('HeliBoard is not the active Android input method')
++    return 'HeliBoard selected as current IME; typing still requires UI test'
+ 
+ 
+ def root_uid(adb: str) -> str:
+@@ -137,6 +159,8 @@
+     ap.add_argument('--require-root', action='store_true', help='Require su to work inside Android guest')
+     ap.add_argument('--require-appmanager', action='store_true', help='Also require the real App Manager package')
+     ap.add_argument('--require-keyboard', action='store_true', help='Require installed and registered HeliBoard input method')
++    ap.add_argument('--require-active-keyboard', action='store_true', help='Require HeliBoard to be selected as the current Android IME')
++    ap.add_argument('--require-clipboard-privilege', action='store_true', help='Require platform granted background clipboard permission, not merely APK installation')
+     ap.add_argument('--require-magisk-root', action='store_true', help='Explicitly request and test Magisk-managed root; may show a superuser prompt')
+     ap.add_argument('--check-clipboard', action='store_true', help='Explicitly test Android text clipboard when original text can be restored and confirmed')
+     ap.add_argument('--require-play-services', action='store_true', help='Require genuine installed Play Store, Google Play services and Services Framework (does not install them)')
+@@ -157,6 +181,10 @@
+         tests.append(check('HeliBoard installed', lambda: require_package(args.adb, 'helium314.keyboard')))
+         tests.append(check('HeliBoard input method registered', lambda: require_substring(
+             adb_run(args.adb, 'ime', 'list', '-s'), 'helium314.keyboard')))
++    if args.require_active_keyboard:
++        tests.append(check('HeliBoard currently selected', lambda: active_heliboard(args.adb)))
++    if args.require_clipboard_privilege:
++        tests.append(check('Android clipboard signature permission granted', lambda: clipboard_privilege(args.adb)))
+     if args.require_play_services:
+         for package in ('com.android.vending', 'com.google.android.gms', 'com.google.android.gsf'):
+             tests.append(check('Google component installed: ' + package,

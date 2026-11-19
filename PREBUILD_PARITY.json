@@ -1,0 +1,324 @@
+{
+  "product": "Andarium Red Android 17",
+  "source_checks_passed": 44,
+  "source_checks_total": 44,
+  "release_gate": "NO-GO",
+  "source_gates": [
+    {
+      "requirement": "Exact reference artwork: home.png",
+      "state": "source-ready",
+      "evidence": "sha256=5e998a1f650c6241a4c1c40cde5182d4263960a0749c2b9b6e0c4e1f07eaa687"
+    },
+    {
+      "requirement": "Exact reference artwork: settings.png",
+      "state": "source-ready",
+      "evidence": "sha256=385f327af32a272e946fef66a175af00142991ed407756cbb836970243b37b52"
+    },
+    {
+      "requirement": "Exact reference artwork: browser.png",
+      "state": "source-ready",
+      "evidence": "sha256=3302c693d585e351e9a3c5ad7a821b55167fd036d4c5ce7140c163c7cbdbc87f"
+    },
+    {
+      "requirement": "Android-native responsive HOME instead of a screenshot skin",
+      "state": "source-ready",
+      "evidence": "Android widgets and real application icons; source stub compilation passed, device appearance untested"
+    },
+    {
+      "requirement": "Actual installed-app drawer and search",
+      "state": "source-ready",
+      "evidence": "Android PackageManager-backed; host/device behavior not validated"
+    },
+    {
+      "requirement": "Live battery and clock rather than mock status",
+      "state": "source-ready",
+      "evidence": "Android local battery/time live-code integration; not device compiled"
+    },
+    {
+      "requirement": "Missing-app indicators and no fabricated rooted status",
+      "state": "source-ready",
+      "evidence": "Only installed applications may be marked available; root unverified"
+    },
+    {
+      "requirement": "Real Android Settings intents",
+      "state": "source-ready",
+      "evidence": "Working action intents in source; full mockup is not native Settings"
+    },
+    {
+      "requirement": "Real red Android Settings and browser panels",
+      "state": "source-ready",
+      "evidence": "Native clickable Android views; not compiled or UI-tested on device"
+    },
+    {
+      "requirement": "Safe functional browser URL routing",
+      "state": "source-ready",
+      "evidence": "Validated URL handling before launching real installed Titanium browser"
+    },
+    {
+      "requirement": "Android 17 product source overlay",
+      "state": "source-ready",
+      "evidence": "Checked Android 17 source target, not built image"
+    },
+    {
+      "requirement": "Incremental official APK staging without losing previous apps",
+      "state": "source-ready",
+      "evidence": "Local stage upgrade tested; actual build resource validation still required"
+    },
+    {
+      "requirement": "Read-only Xcode, Swift descriptor and APK staging audit",
+      "state": "source-ready",
+      "evidence": "Can reject inconsistent staged package resources before build; no real APK bundle audited here"
+    },
+    {
+      "requirement": "Pinned Magisk manager",
+      "state": "source-ready",
+      "evidence": "Verified release digest defined; no bundled APK in this source-only package"
+    },
+    {
+      "requirement": "Pinned Titanium ARM64 APK",
+      "state": "source-ready",
+      "evidence": "Verified release digest defined; no bundled APK in this source-only package"
+    },
+    {
+      "requirement": "Pinned F-Droid full client APK",
+      "state": "source-ready",
+      "evidence": "Full F-Droid 2.0.1 source pin (not latest 2.0.3); APK unbundled"
+    },
+    {
+      "requirement": "Pinned Termux ARM64 APK",
+      "state": "source-ready",
+      "evidence": "Release digest + exact byte count; APK not in source package"
+    },
+    {
+      "requirement": "Pinned App Manager APK",
+      "state": "source-ready",
+      "evidence": "Verified release digest defined; no bundled APK in this source-only package"
+    },
+    {
+      "requirement": "Official HeliBoard keyboard APK verification",
+      "state": "source-ready",
+      "evidence": "Official HeliBoard v4.2 release pin; user must enable IME after installation"
+    },
+    {
+      "requirement": "Executable AOT artifact build and verification workflow",
+      "state": "source-ready",
+      "evidence": "Runs upstream AOT producer only with real release and supported fsck; no artifact produced here"
+    },
+    {
+      "requirement": "Official APK downloader with immutable checksum pins",
+      "state": "source-ready",
+      "evidence": "Downloads not executed in offline environment; verify official bytes at build time"
+    },
+    {
+      "requirement": "Root verification works with debuggable and non-debuggable Android",
+      "state": "source-ready",
+      "evidence": "Exact UID 0 check and separate Magisk response; root remains unverified until live test"
+    },
+    {
+      "requirement": "Clipboard roundtrip requires verified restoration",
+      "state": "source-ready",
+      "evidence": "Never changes a non-text clipboard, checks restoration; iOS transport not device-tested"
+    },
+    {
+      "requirement": "Play Store service dependencies tested separately",
+      "state": "source-ready",
+      "evidence": "Can detect installed packages; no licensed Google Services distribution or functionality claim"
+    },
+    {
+      "requirement": "Guest-root mode diagnostic and explicit Magisk separation",
+      "state": "source-ready",
+      "evidence": "Diagnostic su path inspected; no Magisk-managed root proof"
+    },
+    {
+      "requirement": "Explicit user-initiated in-guest root and Magisk verification",
+      "state": "source-ready",
+      "evidence": "Shows only observed root result, never infers root from APK presence"
+    },
+    {
+      "requirement": "Lazy loading original artwork for native HOME performance",
+      "state": "source-ready",
+      "evidence": "Reference bitmaps not decoded on every native HOME launch"
+    },
+    {
+      "requirement": "Prevent duplicate first-boot APK installers per guest run",
+      "state": "source-ready",
+      "evidence": "Boot-complete notifications cannot start overlapping installations in one guest run"
+    },
+    {
+      "requirement": "Theme color persisted in native Android launcher and Settings panels",
+      "state": "source-ready",
+      "evidence": "Guest remembers 24-bit RGB sent on launch; Nexaris host-to-guest runtime adapter still needs actual integration"
+    },
+    {
+      "requirement": "Explicit clipboard signature permission check",
+      "state": "source-ready",
+      "evidence": "Checks granted permission in live Android package registry, not only manifest declaration"
+    },
+    {
+      "requirement": "Verify active HeliBoard, not just package registration",
+      "state": "source-ready",
+      "evidence": "Requires selected IME; actual Android typing test remains outstanding"
+    },
+    {
+      "requirement": "Validate official Magisk boot and kernel-less init_boot inputs",
+      "state": "source-ready",
+      "evidence": "Non-destructive input check; no Magisk runtime or root integration claimed"
+    },
+    {
+      "requirement": "Strict host clipboard response parsing",
+      "state": "source-ready",
+      "evidence": "Rejects ambiguous or duplicated Android Bundle fields; adversarial Swift harness passed"
+    },
+    {
+      "requirement": "Guest clipboard rejects malformed Unicode",
+      "state": "source-ready",
+      "evidence": "Real provider method Java compile/harness passed; live provider privilege remains untested"
+    },
+    {
+      "requirement": "Canonical unpadded Base64 across iOS, Android, and acceptance test",
+      "state": "source-ready",
+      "evidence": "Both protocol implementations reject unused nonzero Base64 bits; Java/Swift/Python regression harnesses passed"
+    },
+    {
+      "requirement": "Live clipboard verification protects concurrent user changes",
+      "state": "source-ready",
+      "evidence": "ADB verifier restores its test clip only if its own clip is still current; other apps may replace it"
+    },
+    {
+      "requirement": "AOT acceptance candidates validated by upstream release verifier",
+      "state": "source-ready",
+      "evidence": "Candidate rejected on missing fields, digest mismatch or upstream verify failure; still not auto-accepted"
+    },
+    {
+      "requirement": "First boot scans package bundle once per run",
+      "state": "source-ready",
+      "evidence": "Upgrades the previously injected v10 method and skips redundant scans after completion"
+    },
+    {
+      "requirement": "Compiled launcher input structurally checked",
+      "state": "source-ready",
+      "evidence": "Rejects dummy APK ZIPs; platform package manager still performs definitive install validation"
+    },
+    {
+      "requirement": "AOT archive candidate is explicit and unaccepted",
+      "state": "source-ready",
+      "evidence": "Candidate may request native archive acceleration, but descriptor is not silently accepted"
+    },
+    {
+      "requirement": "First-boot ADB installation logic",
+      "state": "source-ready",
+      "evidence": "source integrator only; iOS build and guest install not verified"
+    },
+    {
+      "requirement": "Explicit host-guest clipboard sources",
+      "state": "source-ready",
+      "evidence": "Not yet platform-signed or tested against Android 17"
+    },
+    {
+      "requirement": "Native resolution, user override and thermal safety",
+      "state": "source-ready",
+      "evidence": "Host default only; Native workload and thermal frame rate untested"
+    },
+    {
+      "requirement": "AOT build-source audit",
+      "state": "source-ready",
+      "evidence": "Audit is implemented; artifact is not generated or accepted"
+    }
+  ],
+  "runtime_gates": [
+    {
+      "requirement": "Full Android 17 image built",
+      "state": "unverified",
+      "evidence": "No compiled Android 17 image supplied"
+    },
+    {
+      "requirement": "iOS custom app built and signed",
+      "state": "unverified",
+      "evidence": "No Xcode device archive or IPA supplied"
+    },
+    {
+      "requirement": "Android 17 boots on iPhone",
+      "state": "unverified",
+      "evidence": "No device boot log"
+    },
+    {
+      "requirement": "Magisk-managed root",
+      "state": "unverified",
+      "evidence": "Manager APK alone is not root; guest kernel support unproven"
+    },
+    {
+      "requirement": "Clipboard transfers work in both directions",
+      "state": "unverified",
+      "evidence": "Privileged system provider and host must be built and tested together"
+    },
+    {
+      "requirement": "Titanium extension compatibility",
+      "state": "unverified",
+      "evidence": "Chromium APK not installed or tested in guest"
+    },
+    {
+      "requirement": "Google Play Store genuinely available",
+      "state": "missing",
+      "evidence": "No licensed Play services/store bundle or compatibility proof"
+    },
+    {
+      "requirement": "F-Droid installed",
+      "state": "unverified",
+      "evidence": "Checksum-pinned staging exists for 2.0.1; no actual guest install"
+    },
+    {
+      "requirement": "Termux installed",
+      "state": "unverified",
+      "evidence": "Checksum-pinned install path exists; no actual guest install"
+    },
+    {
+      "requirement": "HeliBoard keyboard installed and working",
+      "state": "unverified",
+      "evidence": "Official v4.2 APK pinned; guest install, IME enable and typing untested"
+    },
+    {
+      "requirement": "Responsive native HOME appearance and accessibility on iPhone",
+      "state": "unverified",
+      "evidence": "Widget source and local stub compile passed; actual Android build and visual comparison pending"
+    },
+    {
+      "requirement": "Full functional red native Settings/browser design",
+      "state": "unverified",
+      "evidence": "Native Android screens implemented but uncompiled/untested; design pixel parity unverified"
+    },
+    {
+      "requirement": "Native-resolution fast boot and smooth FPS",
+      "state": "unverified",
+      "evidence": "No full-resolution boot or thermal-controlled benchmark"
+    },
+    {
+      "requirement": "Stability under sustained load",
+      "state": "unverified",
+      "evidence": "No extended iPhone run or crash report"
+    },
+    {
+      "requirement": "Selected Nexaris accent reaches running Android guest",
+      "state": "unverified",
+      "evidence": "Guest RGB persistence and Nexaris UI adapter source exist; no connected live host transport or visual roundtrip"
+    },
+    {
+      "requirement": "Independent Nexaris My Device launch and gesture behavior",
+      "state": "unverified",
+      "evidence": "Native entry in Nexaris feature branch only; requires built iPhone interaction test"
+    },
+    {
+      "requirement": "Guest data survives restart and seven-day signing window",
+      "state": "unverified",
+      "evidence": "No signed app data-retention or restart tests"
+    },
+    {
+      "requirement": "iOS privacy permissions safely bridge to guest",
+      "state": "unverified",
+      "evidence": "Clipboard source only; camera, microphone and location require opt-in host bridges and device tests"
+    }
+  ],
+  "aot_readiness": {
+    "status": "No Kernarium checkout supplied; not verified"
+  },
+  "note": "Passing source tests is not feature parity, an iOS build, or device acceptance."
+}

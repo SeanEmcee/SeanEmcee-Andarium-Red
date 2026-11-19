@@ -1,0 +1,415 @@
+--- v12/host_firstboot.py
++++ v13/host_firstboot.py
+@@ -12,6 +12,7 @@
+ import json
+ import shutil
+ import zipfile
++import re
+ from pathlib import Path
+ from install_source_overlay import validate_apk, validate_titanium
+ 
+@@ -229,19 +230,66 @@
+     return content
+ 
+ 
++# The user's bundled APK set may grow between source updates. Keep names
++# fixed and revalidate every existing APK; never silently trust old bytes.
++BUNDLE_ORDER = (
++    'TwoyiRedLauncher.apk', 'Magisk-v31.1.apk', 'Titanium-v157.apk',
++    'AppManager-v4.1.1.apk', 'Termux-v0.118.3-arm64.apk',
++    'FDroid-v2.0.1.apk', 'HeliBoard-v4.2-release.apk',
++)
++
++
++def validate_existing(name: str, path: Path) -> dict:
++    validators = {
++        'TwoyiRedLauncher.apk': verify_launcher,
++        'Magisk-v31.1.apk': validate_apk,
++        'Titanium-v157.apk': validate_titanium,
++        'AppManager-v4.1.1.apk': validate_appmanager,
++        'Termux-v0.118.3-arm64.apk': validate_termux,
++        'FDroid-v2.0.1.apk': validate_fdroid,
++        'HeliBoard-v4.2-release.apk': validate_heliboard,
++    }
++    if name not in validators:
++        raise ValueError(f'Unknown existing APK resource: {name}')
++    if not path.is_file() or path.is_symlink():
++        raise ValueError(f'Existing APK resource is missing or is a symlink: {name}')
++    return validators[name](path)
++
++
++PROJECT_GROUP_RE = re.compile(
++    r'    \{ "kind": "group", "name": "Red Bundled APKs", '
++    r'"path": "Andarium/RedBundledAPKs", "children": \[\n'
++    r'(?P<children>.*?)\n    \] \},', re.S,
++)
++PROJECT_PATH_RE = re.compile(r'\{ "path": "([^"\n]+)", "target-membership": '
++                             r'\[ "Andarium/resources" \] \}')
++
++
+ def patch_project(original: str, packages: list[str]) -> str:
+     if PROJECT_ANCHOR not in original:
+         raise ValueError('Andarium Xcode JSON project resource anchor changed')
+-    # One explicit group with each APK targeted to the app's resources phase.
++    if len(packages) != len(set(packages)) or any(name not in BUNDLE_ORDER for name in packages):
++        raise ValueError('Duplicate or unknown bundled APK resource requested')
++    packages = [name for name in BUNDLE_ORDER if name in packages]
++    children = ',\n'.join(
++        f'      {{ "path": "{name}", "target-membership": [ "Andarium/resources" ] }}'
++        for name in packages)
++    group = ('    { "kind": "group", "name": "Red Bundled APKs", '
++             '"path": "Andarium/RedBundledAPKs", "children": [\n'
++             + children + '\n    ] },')
++    existing = PROJECT_GROUP_RE.search(original)
++    if existing:
++        raw_children = existing.group('children')
++        entries = PROJECT_PATH_RE.findall(raw_children)
++        # Refuse unrecognized JSON5 elements or a duplicate resource entry.
++        residue = PROJECT_PATH_RE.sub('', raw_children).replace(',', '').strip()
++        if residue or len(entries) != len(set(entries)) or any(x not in BUNDLE_ORDER for x in entries):
++            raise ValueError('Existing Red APK group has unexpected or duplicate resources')
++        if not set(entries).issubset(packages):
++            raise ValueError('Existing Red APK group contains resources missing from staged bundle')
++        return original[:existing.start()] + group + original[existing.end():]
+     if '"name": "Red Bundled APKs"' in original:
+-        # Existing project must already carry the same asset set.
+-        for filename in packages:
+-            if f'"path": "{filename}"' not in original:
+-                raise ValueError('Existing Red APK resource group has different assets')
+-        return original
+-    children = ',\n'.join(f'      {{ "path": "{x}", "target-membership": [ "Andarium/resources" ] }}' for x in packages)
+-    group = ('    { "kind": "group", "name": "Red Bundled APKs", "path": "Andarium/RedBundledAPKs", "children": [\n'
+-             + children + '\n    ] },\n')
++        raise ValueError('Existing Red APK resource group has an unexpected structure')
+     return original.replace(PROJECT_ANCHOR, PROJECT_ANCHOR + '\n' + group, 1)
+ 
+ 
+@@ -310,36 +358,58 @@
+     if heliboard:
+         meta = validate_heliboard(heliboard)
+         inputs.append(('HeliBoard-v4.2-release.apk', heliboard, meta))
+-    if not inputs:
++    target = root / 'Andarium/RedBundledAPKs'
++    input_by_name = {name: (path, meta) for name, path, meta in inputs}
++    existing_files: dict[str, Path] = {}
++    if target.exists():
++        if target.is_symlink() or not target.is_dir():
++            raise ValueError('Existing Red APK bundle is not a real directory')
++        for path in target.iterdir():
++            if path.name not in BUNDLE_ORDER:
++                raise ValueError('Existing Red APK bundle contains unknown resource: ' + path.name)
++            validate_existing(path.name, path)
++            existing_files[path.name] = path
++    if not inputs and not existing_files:
+         raise ValueError('Supply at least one officially verified APK; do not include placeholders')
++    # An add-on update keeps all existing pinned assets; conflicting input is
++    # rejected even when its checksum was valid for a different version.
++    for name, (input_path, _) in input_by_name.items():
++        if name in existing_files:
++            def digest(path: Path) -> str:
++                h = hashlib.sha256()
++                with path.open('rb') as stream:
++                    for chunk in iter(lambda: stream.read(1 << 20), b''):
++                        h.update(chunk)
++                return h.hexdigest()
++            if digest(input_path) != digest(existing_files[name]):
++                raise ValueError('Existing bundled APK differs from requested file: ' + name)
++    merged_names = [name for name in BUNDLE_ORDER if name in input_by_name or name in existing_files]
+     runtime_patched = patch_live_runtime(live.read_text())
+-    project_patched = patch_project(project.read_text(), [name for name, _, _ in inputs])
++    project_patched = patch_project(project.read_text(), merged_names)
+     swift_text = swift_path.read_text()
+-    if launcher:
+-        meta = verify_launcher(launcher)
++    # Preserve the installed custom HOME package across incremental updates.
++    launcher_source = input_by_name.get('TwoyiRedLauncher.apk', (None,))[0] or existing_files.get('TwoyiRedLauncher.apk')
++    if launcher_source:
++        meta = verify_launcher(launcher_source)
+         marker = '        // RED_CUSTOM_PACKAGES'
+         if marker not in swift_text:
+             raise ValueError('Cannot pin launcher in host Swift installer: marker absent')
+         custom = (f'        Package(filename: "TwoyiRedLauncher.apk", androidPackage: "dev.twoyi.redlauncher",\n'
+                   f'                expectedBytes: {meta["bytes"]}, expectedSHA256: "{meta["sha256"]}"),')
+         swift_text = swift_text.replace(marker, custom, 1)
+-    target = root / 'Andarium/RedBundledAPKs'
+-    if target.exists():
+-        existing = {p.name for p in target.iterdir()}
+-        expected = {name for name, _, _ in inputs}
+-        if existing != expected:
+-            raise ValueError('Existing APK bundle has a different asset set; select exact expected set')
+     report = {'changes_applied': not dry_run, 'host_firstboot': True,
+               'guest_android': 17, 'guest_root_enabled': False,
+               'image_rebuild_needed_for_regular_apks': False,
+               'image_rebuild_needed_for_clipboard_privilege': True,
+-              'input_apks': {name: meta for name, _, meta in inputs}}
++              'input_apks': {name: meta for name, _, meta in inputs},
++              'preserved_existing_apks': sorted(set(existing_files) - set(input_by_name)),
++              'bundled_apks_after_update': merged_names}
+     if dry_run:
+         return report
+     target.mkdir(parents=True, exist_ok=True)
+     for name, source, _ in inputs:
+         dest = target / name
+-        if dest.resolve() != source.resolve():
++        if dest.resolve() != source.resolve() and name not in existing_files:
+             shutil.copy2(source, dest)
+     (live.parent / swift_path.name).write_text(swift_text)
+     live.write_text(runtime_patched)
+--- v12/tools/prebuild_parity.py
++++ v13/tools/prebuild_parity.py
+@@ -85,6 +85,15 @@
+     add('Android 17 product source overlay',
+         'LINEAGE24_ANDROID_MAJOR=17' in make and 'lineage_andarium.mk' in make,
+         'Checked Android 17 source target, not built image')
++    apk_audit = (root / 'tools/audit_staged_apks.py')
++    add('Incremental official APK staging without losing previous apps',
++        'existing_files' in host and 'validate_existing' in host
++        and 'merged_names' in host and 'Existing bundled APK differs' in host,
++        'Local stage upgrade tested; actual build resource validation still required')
++    add('Read-only Xcode, Swift descriptor and APK staging audit',
++        apk_audit.is_file() and 'PROJECT_GROUP_RE.search' in apk_audit.read_text()
++        and 'source_apk_bundle_consistent' in apk_audit.read_text(),
++        'Can reject inconsistent staged package resources before build; no real APK bundle audited here')
+     add('Pinned Magisk manager',
+         '89cefac0a318afa39fb3880c45c87b036c05bc1ebf02a7a715b7f8d7c26ac6e7' in installer,
+         'Verified release digest defined; no bundled APK in this source-only package')
+--- /dev/null
++++ v13/tools/audit_staged_apks.py
+@@ -0,0 +1,99 @@
++#!/usr/bin/env python3
++# SPDX-License-Identifier: GPL-2.0-or-later
++"""Audit an actual modified Kernarium checkout's bundled Android APK resources.
++
++This does NOT prove installation or guest operation. It ensures the Xcode
++resource group, host installer descriptor, and on-disk APKs agree before a
++resource-heavy iOS/Android build starts. Read-only and fails closed.
++"""
++from __future__ import annotations
++
++import argparse
++import hashlib
++import json
++import re
++import sys
++from pathlib import Path
++
++ROOT = Path(__file__).resolve().parents[1]
++sys.path.insert(0, str(ROOT))
++import host_firstboot as host
++
++PACKAGE_RE = re.compile(
++    r'Package\(filename: "(?P<name>[^"\n]+)", androidPackage: "(?P<id>[^"\n]+)",\s*'
++    r'expectedBytes: (?P<bytes>[0-9_]+),\s*expectedSHA256: "(?P<sha>[0-9a-f]{64})"\)',
++    re.M,
++)
++
++
++def audit(kernarium: Path) -> dict:
++    base = kernarium / 'Andarium'
++    folder = base / 'RedBundledAPKs'
++    project = base / 'Andarium.xcodeproj/project.xcproj'
++    swift = base / 'Andarium/Live/RedGuestApkInstaller.swift'
++    if not folder.is_dir() or folder.is_symlink() or not project.is_file() or not swift.is_file():
++        raise ValueError('Kernarium checkout is missing a real APK directory, Xcode project or installer source')
++    names = sorted(x.name for x in folder.iterdir())
++    if not names:
++        raise ValueError('No staged APKs to audit')
++    if len(set(names)) != len(names) or any(name not in host.BUNDLE_ORDER for name in names):
++        raise ValueError('Unrecognized staged APK filenames')
++    match = host.PROJECT_GROUP_RE.search(project.read_text())
++    if not match:
++        raise ValueError('Xcode project is missing the Red Bundled APK resources group')
++    entries = host.PROJECT_PATH_RE.findall(match.group('children'))
++    residue = host.PROJECT_PATH_RE.sub('', match.group('children')).replace(',', '').strip()
++    if residue or len(entries) != len(set(entries)) or set(entries) != set(names):
++        raise ValueError('Xcode project resources differ from staged APK files')
++    descriptors = {}
++    for found in PACKAGE_RE.finditer(swift.read_text()):
++        key = found.group('name')
++        if key in descriptors:
++            raise ValueError(f'Duplicate host installer descriptor for {key}')
++        descriptors[key] = {'android_package': found.group('id'),
++                            'bytes': int(found.group('bytes').replace('_', '')),
++                            'sha256': found.group('sha')}
++    if not descriptors:
++        raise ValueError('Host installer has no APK descriptors')
++    verified = []
++    for name in names:
++        path = folder / name
++        # The official release identity must match the hard-coded pin from
++        # host_firstboot; do not trust a same-name file with different bytes.
++        host.validate_existing(name, path)
++        expected = descriptors.get(name)
++        if expected is None:
++            raise ValueError(f'No host installer descriptor for {name}')
++        hasher = hashlib.sha256()
++        with path.open('rb') as stream:
++            for block in iter(lambda: stream.read(1 << 20), b''):
++                hasher.update(block)
++        actual = hasher.hexdigest()
++        if path.stat().st_size != expected['bytes'] or actual != expected['sha256']:
++            raise ValueError(f'Swift APK installer digest or size differs from {name}')
++        verified.append({'filename': name, 'android_package': expected['android_package'],
++                         'bytes': expected['bytes'], 'sha256': actual})
++    return {'product': 'Andarium Red Android 17', 'source_apk_bundle_consistent': True,
++            'build_executed': False, 'guest_install_verified': False,
++            'staged_apks': verified}
++
++
++def main() -> int:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument('--kernarium', required=True, type=Path)
++    parser.add_argument('--out', type=Path)
++    args = parser.parse_args()
++    try:
++        report = audit(args.kernarium.resolve())
++    except (OSError, ValueError) as error:
++        print(f'APK_STAGE_NO_GO: {error}', file=sys.stderr)
++        return 2
++    result = json.dumps(report, indent=2) + '\n'
++    if args.out:
++        args.out.write_text(result)
++    print(result, end='')
++    return 0
++
++
++if __name__ == '__main__':
++    raise SystemExit(main())
+--- /dev/null
++++ v13/tests/test_v13_apk_upgrade.py
+@@ -0,0 +1,135 @@
++# SPDX-License-Identifier: GPL-2.0-or-later
++import sys
++import hashlib
++import struct
++import tempfile
++import unittest
++import zipfile
++from pathlib import Path
++from unittest.mock import patch
++
++ROOT=Path(__file__).resolve().parents[1]
++sys.path.insert(0,str(ROOT))
++sys.path.insert(0,str(ROOT/'tools'))
++import host_firstboot as first
++import audit_staged_apks as auditor
++
++
++class UpgradeAuditTests(unittest.TestCase):
++    def prepare(self, root):
++        live=root/'Andarium/Andarium/Live'
++        live.mkdir(parents=True)
++        (live/'LiveRuntime.swift').write_text('''@MainActor
++final class LiveRuntime {
++    // MARK: Android operations
++    private var operations: AdbGuestOperations { fatalError() }
++    func reached() {
++        if bootCompleted {
++            partialSweep?.guestBooted()
++        }
++    }
++}
++''')
++        project=root/'Andarium/Andarium.xcodeproj/project.xcproj'
++        project.parent.mkdir(parents=True)
++        project.write_text('{"files": [\n'+first.PROJECT_ANCHOR+'\n]}')
++        apk=root/'apksource.apk'
++        with zipfile.ZipFile(apk,'w') as z:
++            z.writestr('AndroidManifest.xml',b'synthetic test fixture')
++        return apk, project
++
++    def make_bundle(self, root):
++        apk, project=self.prepare(root)
++        with patch.object(first,'validate_apk',return_value={'fixture':True}):
++            first.stage(root,ROOT,apk,None)
++        return apk,project
++
++    def test_audit_detects_valid_fixture_using_consistent_metadata(self):
++        with tempfile.TemporaryDirectory() as temp:
++            root=Path(temp)
++            apk, project=self.make_bundle(root)
++            # Replace official Magisk descriptor for this synthetic test only.
++            import hashlib
++            digest=hashlib.sha256(apk.read_bytes()).hexdigest()
++            swift=root/'Andarium/Andarium/Live/RedGuestApkInstaller.swift'
++            src=swift.read_text().replace(first.METHOD_SIGNATURE,'')
++            src=src.replace('expectedBytes: 10_679_283,\n                expectedSHA256: "89cefac0a318afa39fb3880c45c87b036c05bc1ebf02a7a715b7f8d7c26ac6e7"',
++                            f'expectedBytes: {len(apk.read_bytes())},\n                expectedSHA256: "{digest}"')
++            swift.write_text(src)
++            with patch.object(first,'validate_apk',return_value={}):
++                outcome=auditor.audit(root)
++            self.assertTrue(outcome['source_apk_bundle_consistent'])
++            self.assertFalse(outcome['guest_install_verified'])
++
++    def test_xcode_group_mismatch_is_rejected(self):
++        with tempfile.TemporaryDirectory() as temp:
++            root=Path(temp)
++            apk,project=self.make_bundle(root)
++            project.write_text(project.read_text().replace('Magisk-v31.1.apk','Unknown.apk'))
++            with self.assertRaisesRegex(ValueError,'resources differ'):
++                auditor.audit(root)
++
++    def test_missing_swift_descriptor_is_rejected(self):
++        with tempfile.TemporaryDirectory() as temp:
++            root=Path(temp)
++            self.make_bundle(root)
++            swift=root/'Andarium/Andarium/Live/RedGuestApkInstaller.swift'
++            swift.write_text('// empty')
++            with self.assertRaisesRegex(ValueError,'no APK descriptors'):
++                auditor.audit(root)
++
++    def test_unpinned_extraneous_resource_rejected(self):
++        with tempfile.TemporaryDirectory() as temp:
++            root=Path(temp)
++            self.make_bundle(root)
++            (root/'Andarium/RedBundledAPKs/untrusted.apk').write_bytes(b'x')
++            with self.assertRaisesRegex(ValueError,'Unrecognized staged'):
++                auditor.audit(root)
++
++    def test_preserves_custom_launcher_pin_on_later_apk_addition(self):
++        with tempfile.TemporaryDirectory() as temp:
++            root=Path(temp)
++            apk,project=self.prepare(root)
++            launcher=root/'red-home.apk'
++            dex=bytearray(112)
++            dex[:8]=b'dex\n039\x00'
++            struct.pack_into('<III',dex,32,len(dex),112,0x12345678)
++            with zipfile.ZipFile(launcher,'w') as archive:
++                archive.writestr('AndroidManifest.xml',b'\x03\x00\x08\x00'+bytes(12))
++                archive.writestr('classes.dex',bytes(dex))
++            first.stage(root,ROOT,None,None,launcher=launcher)
++            with patch.object(first,'validate_apk',return_value={}):
++                first.stage(root,ROOT,apk,None)
++            installed=(root/'Andarium/Andarium/Live/RedGuestApkInstaller.swift').read_text()
++            self.assertIn(hashlib.sha256(launcher.read_bytes()).hexdigest(),installed)
++            self.assertEqual(installed.count('Package(filename: "TwoyiRedLauncher.apk"'),1)
++            self.assertIn('Magisk-v31.1.apk',project.read_text())
++            self.assertIn('TwoyiRedLauncher.apk',project.read_text())
++
++    def test_swift_descriptor_digest_mismatch_detected(self):
++        with tempfile.TemporaryDirectory() as temp:
++            root=Path(temp)
++            apk,project=self.make_bundle(root)
++            # Official pin mismatch in synthetic fixture must remain NO-GO.
++            with patch.object(first,'validate_apk',return_value={}):
++                with self.assertRaisesRegex(ValueError,'Swift APK installer digest or size'):
++                    auditor.audit(root)
++
++    def test_project_group_rejects_duplicate_entries(self):
++        project='{"files": [\n'+first.PROJECT_ANCHOR+'\n]}'
++        one=first.patch_project(project,['Magisk-v31.1.apk'])
++        duplicate=one.replace('      { "path": "Magisk-v31.1.apk", "target-membership": [ "Andarium/resources" ] }',
++            '      { "path": "Magisk-v31.1.apk", "target-membership": [ "Andarium/resources" ] },\n'
++            '      { "path": "Magisk-v31.1.apk", "target-membership": [ "Andarium/resources" ] }')
++        with self.assertRaisesRegex(ValueError,'duplicate'):
++            first.patch_project(duplicate,['Magisk-v31.1.apk'])
++
++    def test_no_staged_bundle_is_not_claimed_ready(self):
++        with tempfile.TemporaryDirectory() as temp:
++            root=Path(temp)
++            self.prepare(root)
++            with self.assertRaisesRegex(ValueError,'missing a real APK'):
++                auditor.audit(root)
++
++
++if __name__=='__main__':unittest.main()
