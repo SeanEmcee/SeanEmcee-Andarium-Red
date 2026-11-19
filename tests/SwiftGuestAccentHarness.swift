@@ -8,28 +8,35 @@ private func check(_ condition: Bool, _ description: String) {
 @main
 struct GuestAccentHarness {
     static func main() throws {
-        let defaultRed = try RedGuestAccentTransport.command(rgb: 0xF22B43)
-        check(defaultRed == "am start --user 0 -n dev.twoyi.redlauncher/.MainActivity --ei dev.twoyi.redlauncher.NEXARIS_ACCENT_RGB 15870787", "default RGB command")
-        let black = try RedGuestAccentTransport.command(rgb: 0)
-        check(black.hasSuffix(" 0"), "black RGB")
-        let white = try RedGuestAccentTransport.command(rgb: 0xFFFFFF)
-        check(white.hasSuffix(" 16777215"), "max RGB")
+        let expectedPrefix = "content call --uri content://dev.twoyi.redlauncher.theme/"
+        let crimson = try RedGuestAccentTransport.command(rgb: 0xF22B43)
+        check(crimson == expectedPrefix + " --method set --extra rgb:i:15870787", "default RGB")
+        check(try RedGuestAccentTransport.command(rgb: 0) == expectedPrefix + " --method set --extra rgb:i:0", "black RGB")
+        check(try RedGuestAccentTransport.command(rgb: 0xFFFFFF).hasSuffix("16777215"), "white RGB")
+        check(RedGuestAccentTransport.readCommand == expectedPrefix + " --method get", "readback command")
         do {
             _ = try RedGuestAccentTransport.command(rgb: 0x01000000)
-            preconditionFailure("out-of-range RGB accepted")
+            preconditionFailure("invalid RGB accepted")
         } catch RedGuestAccentTransport.AccentError.outOfRange {}
-        try RedGuestAccentTransport.verify("Starting: Intent { ... }", exitCode: 0)
-        try RedGuestAccentTransport.verify("Warning: Activity not started, intent has been delivered to currently running top-most instance.", exitCode: 0)
-        for message in ["", "Success without explicit activity confirmation", "Error: Activity class does not exist", "java.lang.SecurityException", "Permission Denial: not exported"] {
+
+        try RedGuestAccentTransport.verify("Result: Bundle[{status=ok}]", exitCode: 0)
+        try RedGuestAccentTransport.verifyRead("Result: Bundle[{rgb=15870787}]", exitCode: 0, expectedRGB: 0xF22B43)
+        for bad in ["", "Result: Bundle[{status=permission_denied}]", "Result: Bundle[{status=ok,other=ok}]", "Injected\nResult: Bundle[{status=ok}]", "Result: Bundle[{not_status=ok}]"] {
             do {
-                try RedGuestAccentTransport.verify(message, exitCode: 0)
-                preconditionFailure("Android error reply accepted")
+                try RedGuestAccentTransport.verify(bad, exitCode: 0)
+                preconditionFailure("bad status accepted")
+            } catch RedGuestAccentTransport.AccentError.guestRejected {}
+        }
+        for bad in ["", "Result: Bundle[{rgb=0}]", "Result: Bundle[{rgb=15870787,foo=bar}]", "Result: Bundle[{rgb=0xF22B43}]"] {
+            do {
+                try RedGuestAccentTransport.verifyRead(bad, exitCode: 0, expectedRGB: 0xF22B43)
+                preconditionFailure("bad readback accepted")
             } catch RedGuestAccentTransport.AccentError.guestRejected {}
         }
         do {
-            try RedGuestAccentTransport.verify("", exitCode: 1)
-            preconditionFailure("nonzero exit accepted")
+            try RedGuestAccentTransport.verify("Result: Bundle[{status=ok}]", exitCode: nil)
+            preconditionFailure("unknown shell exit accepted")
         } catch RedGuestAccentTransport.AccentError.guestRejected {}
-        print("GUEST_ACCENT_SWIFT_11_PASS (local command validator; not guest execution)")
+        print("GUEST_ACCENT_SWIFT_17_PASS (local provider protocol; not guest execution)")
     }
 }
