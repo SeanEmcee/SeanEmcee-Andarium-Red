@@ -13,8 +13,8 @@ import android.graphics.Color;
 final class RedAccentStore {
     static final String EXTRA_RGB = "dev.twoyi.redlauncher.NEXARIS_ACCENT_RGB";
     static final int DEFAULT_RGB = 0xF22B43;
-    private static final String PREFS = "andarium_red_theme";
-    private static final String KEY = "nexaris_accent_rgb";
+    static final String PREFS = "andarium_red_theme";
+    static final String KEY = "nexaris_accent_rgb";
 
     private RedAccentStore() {}
 
