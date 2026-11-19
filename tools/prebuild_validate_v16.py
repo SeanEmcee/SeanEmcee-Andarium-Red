@@ -27,6 +27,7 @@ def commands() -> list[tuple[str, list[str], int]]:
         ('Clipboard provider Java behavior', [python, 'tools/clipboard_provider_behavior_test.py'], 60),
         ('Android native HOME Java stubs', [python, 'tools/native_home_stub_compile.py'], 60),
         ('Android native panels Java stubs', [python, 'tools/android_panel_stub_compile.py'], 60),
+        ('Android responsive HOME layout', [python, 'tools/dashboard_grid_behavior_test.py'], 60),
         ('Android RGB Java persistence', [python, 'tools/accent_store_behavior_test.py'], 60),
         ('Android RGB provider permission behavior', [python, 'tools/theme_provider_behavior_test.py'], 60),
         ('Evidence-based source gates', [python, 'tools/prebuild_parity.py',
