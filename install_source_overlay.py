@@ -156,11 +156,48 @@ def validate_titanium(path: Path) -> dict:
             'release': TITANIUM_RELEASE_URL}
 
 
+def patch_host_transport_runtime(original: str) -> str:
+    """Bind the iPhone's actual active route to the Android guest's status provider.
+
+    This runs AFTER clipboard ADB integration. It neither touches the kernel
+    VirtWifi device nor claims to control iOS's physical Wi-Fi switch.
+    """
+    marker = "    private lazy var redHostTransportRelay = RedHostTransportRelay"
+    if marker in original:
+        return original
+    property_anchor = "    private var normalRun = false"
+    boot_anchor = "            partialSweep?.guestBooted()"
+    finish_anchor = "    private func finished(result: Int32) {"
+    restart_anchor = "        model.guestRestartsCounted(restartCount)"
+    for name, expected in (("runtime", property_anchor), ("boot", boot_anchor),
+                           ("finish", finish_anchor), ("restart", restart_anchor)):
+        if original.count(expected) != 1:
+            raise ValueError(f"Host network relay integration: unexpected {name} anchor")
+    addition = """    /// Shares the active iOS path with the guest's read-only Settings panel.
+    /// Fixed, allowlisted values only; no guest-origin shell commands.
+    private lazy var redHostTransportRelay = RedHostTransportRelay { [weak self] route in
+        guard let self, self.normalRun, self.runActive else { return false }
+        do {
+            let response = try await self.redClipboardShell(
+                "content call --uri content://dev.twoyi.redlauncher.hostnetwork/state --method set --arg " + route.rawValue)
+            return response.contains("transport=" + route.rawValue)
+        } catch {
+            return false
+        }
+    }
+"""
+    original = original.replace(property_anchor, property_anchor + "\n" + addition, 1)
+    original = original.replace(boot_anchor, boot_anchor + "\n            redHostTransportRelay.start()", 1)
+    original = original.replace(finish_anchor, finish_anchor + "\n        redHostTransportRelay.stop()", 1)
+    original = original.replace(restart_anchor, restart_anchor + "\n        redHostTransportRelay.stop()", 1)
+    return original
+
+
 def patch_host_runtime(original: str) -> str:
     marker = '    // MARK: Android operations'
     signature = '    func redClipboardShell(_ command: String) async throws -> String {'
     if signature in original:
-        return original
+        return patch_host_transport_runtime(original)
     if marker not in original or 'private var operations: AdbGuestOperations' not in original:
         raise ValueError('Upstream LiveRuntime.swift Android operations interface changed')
     addition = '''    /// Explicit, user-triggered clipboard transfer over existing authenticated guest ADB.
@@ -212,7 +249,7 @@ def patch_host_runtime(original: str) -> str:
     }
 
 '''
-    return patched.replace(marker, marker + '\n\n' + provision_method, 1)
+    return patch_host_transport_runtime(patched.replace(marker, marker + '\n\n' + provision_method, 1))
 
 
 def patch_native_resolution_default(original: str) -> str:
@@ -401,7 +438,7 @@ def apply(root: Path, source: Path, magisk_apk: Path | None, dry_run: bool,
         for target, content in host_patch.items():
             target.write_text(content)
         host_dest = root / 'Andarium/Andarium/Live'
-        for fname in ('RedClipboardCodec.swift', 'RedClipboardControls.swift', 'RedHostRouteRuntime.swift'):
+        for fname in ('RedClipboardCodec.swift', 'RedClipboardControls.swift', 'RedHostRouteRuntime.swift', 'RedHostTransportRelay.swift'):
             shutil.copy2(Path(__file__).resolve().parent / 'host' / fname, host_dest / fname)
     if t_report:
         tdir = dest / 'titanium'
