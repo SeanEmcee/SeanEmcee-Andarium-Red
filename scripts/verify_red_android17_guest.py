@@ -58,7 +58,7 @@ def inspect(folder: Path) -> dict:
     require(isinstance(android, dict) and android.get("major") == 17
             and android.get("signed") is False,
             "Guest must be unsigned Android 17 from the Red image producer")
-    require(manifest.get("product_family") == "lineage-andarium",
+    require(manifest.get("product_family") == "lineage-24-mainline-6.18-4k",
             "Wrong guest product family")
     producer = manifest.get("producer")
     require(isinstance(producer, dict)
