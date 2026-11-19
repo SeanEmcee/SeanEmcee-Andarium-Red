@@ -170,6 +170,7 @@ class RedRuntimeOverlayTests(unittest.TestCase):
         self.assertIn("ratioHeight", source)
         self.assertIn("func setLinked(_ on: Bool)", source)
         self.assertIn("maximumPixels = 16_777_216", source)
+        self.assertIn("maximumSide = 4095", source)
 
 
 if __name__ == "__main__":
