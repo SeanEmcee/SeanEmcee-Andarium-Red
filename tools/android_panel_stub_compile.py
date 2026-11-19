@@ -19,7 +19,7 @@ STUBS = {
 'android/content/pm/PackageManager.java': '''package android.content.pm; public class PackageManager { public Object getPackageInfo(String name,int flags) throws NameNotFoundException{return null;} public android.content.Intent getLaunchIntentForPackage(String p){return null;} public static class NameNotFoundException extends Exception{} }''',
 'android/content/res/Resources.java': '''package android.content.res; public class Resources { public android.util.DisplayMetrics getDisplayMetrics(){return null;} }''',
 'android/util/DisplayMetrics.java': '''package android.util; public class DisplayMetrics {public float density;}''',
-'android/app/Activity.java': '''package android.app; public class Activity extends android.content.Context { protected void onCreate(android.os.Bundle b){} public android.view.Window getWindow(){return null;} public android.content.Intent getIntent(){return null;} public void setContentView(android.view.View v){} public void finish(){} }''',
+'android/app/Activity.java': '''package android.app; public class Activity extends android.content.Context { protected void onCreate(android.os.Bundle b){} public android.view.Window getWindow(){return null;} public android.content.Intent getIntent(){return null;} public void setContentView(android.view.View v){} public void finish(){} public void runOnUiThread(Runnable r){} }''',
 'android/app/AlertDialog.java': '''package android.app; public class AlertDialog { public static class Builder {public Builder(android.content.Context c){} public Builder setTitle(String s){return this;} public Builder setMessage(String s){return this;} public Builder setPositiveButton(String s,android.content.DialogInterface.OnClickListener l){return this;} public AlertDialog show(){return null;} } }''',
 'android/graphics/Color.java': '''package android.graphics; public class Color { public static final int WHITE=0, BLACK=0;public static int rgb(int r,int g,int b){return 0;} }''',
 'android/graphics/Typeface.java': '''package android.graphics; public class Typeface {public static final Typeface DEFAULT=new Typeface();public static final int BOLD=1,NORMAL=0;}''',
@@ -46,7 +46,7 @@ def run() -> None:
             f=path/name
             f.parent.mkdir(parents=True,exist_ok=True)
             f.write_text(text)
-        sources=list(path.rglob('*.java')) + [ROOT/'launcher_src/java/dev/twoyi/redlauncher/PanelLinkPolicy.java',ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedPanelActivity.java',ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedAccentStore.java']
+        sources=list(path.rglob('*.java')) + [ROOT/'launcher_src/java/dev/twoyi/redlauncher/PanelLinkPolicy.java',ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedPanelActivity.java',ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedAccentStore.java',ROOT/'launcher_src/java/dev/twoyi/redlauncher/RedRootProbe.java']
         result=subprocess.run(['javac','-d',str(path/'classes'),*[str(p) for p in sources]],capture_output=True,text=True)
         if result.returncode:
             raise SystemExit('RED PANEL STUB COMPILE FAILED: '+result.stderr)
