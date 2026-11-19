@@ -37,7 +37,7 @@ The fade view uses the real Nexaris UI beneath the actual guest UIViewController
 ## Development verification
 
 - Exact committed `HostLaunchWire.java` + actual Java harness: **45/45 checks passed** on a Linux JDK. Byte-for-byte Git blob hashes matched the private GitHub repository.
-- Exact committed `NexarisAndroidHostWire.swift` + Swift harness (before adding the ADB closure extension): **25/25 checks passed** on Linux Swift. The subsequent closure extension and bounded-wait command remain to be recompiled; do not claim Xcode success.
+- Exact committed `NexarisAndroidHostWire.swift`, including ADB shell closure and bounded-wait command, plus Swift harness: **25/25 checks passed** on Linux Swift. Byte-for-byte Git blob hashes matched. This does not typecheck the SwiftUI/iOS Nexaris view or claim Xcode success.
 - `tools/host_route_provider_behavior_test.py` adds 17 Android-shaped Java behavior checks for UID gating, busy mailbox, acknowledgement and stale-event refusal. These run from the complete working tree's first-build gate.
 - No Android image, signed Nexaris/Andarium IPA, or physical-iPhone fade/fps measurement was produced.
 
