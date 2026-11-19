@@ -1,12 +1,18 @@
 name: Andarium Red v17 - Xcode 27 first compile (unsigned)
-# Manual only: avoids consuming private-repository Actions minutes.
-# The workflow becomes eligible for free standard runner minutes if the user
-# separately makes the source repository public. No signing secrets are used.
+# Public repository: an exact, scoped, one-time push receipt may launch
+# source and full-host checks without interactive browser authentication.
+# Only dedicated preview/host requests on the reviewed feature branch trigger.
+# No signing secrets are used.
 on:
+  push:
+    branches: [feature/andd-memory-tuning]
+    paths:
+      - 'build-requests/preview-*.txt'
+      - 'build-requests/host-*.txt'
   workflow_dispatch:
     inputs:
       phase:
-        description: "Source gate, iOS preview compile or full unsigned host compile"
+        description: "Source gate, Simulator smoke, full host compile, or verified modified Red Android 17 IPA"
         required: true
         type: choice
         default: preview
@@ -14,18 +20,26 @@ on:
           - source
           - preview
           - host-unsigned
+          - red-ipa
+      guest_proof_run_id:
+        description: "Run ID containing genuine compiled Android 17 proof artifact for red-ipa"
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
-  group: andarium-first-build-${{ github.ref }}
+  group: andarium-first-build-${{ github.ref }}-${{ inputs.phase || (contains(github.event.head_commit.message, '[host-unsigned]') && 'host-unsigned' || 'preview') }}
   cancel-in-progress: false
 
 jobs:
   first-compile:
+    if: github.ref == 'refs/heads/feature/andd-memory-tuning'
     runs-on: xcode-27
-    timeout-minutes: 55
+    timeout-minutes: 180
     env:
       KERNARIUM_REVISION: fbe12ee72d195f0241c4fc24090a98b259026604
       ANDARIUM_UPSTREAM: https://github.com/imxieyi/Kernarium.git
@@ -74,7 +88,7 @@ jobs:
             tee .build/ci/source-gate.log
 
       - name: Compile AndariumPreview with Xcode 27
-        if: inputs.phase == 'preview'
+        if: inputs.phase == 'preview' || (github.event_name == 'push' && !contains(github.event.head_commit.message, '[host-unsigned]'))
         shell: bash
         run: |
           set -euo pipefail
@@ -86,20 +100,89 @@ jobs:
             CODE_SIGNING_ALLOWED=NO build 2>&1 |
             tee "$GITHUB_WORKSPACE/.build/ci/preview-xcodebuild.log"
 
-      - name: Attempt unsigned Andarium host compilation
-        if: inputs.phase == 'host-unsigned'
+      - name: Require an actual compiled Red Android 17 guest proof
+        if: inputs.phase == 'red-ipa'
+        shell: bash
+        env:
+          PROOF_RUN_ID: ${{ inputs.guest_proof_run_id }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$PROOF_RUN_ID" =~ ^[0-9]+$ ]]; then
+            echo "ERROR: red-ipa requires a real Android 17 build's numeric guest_proof_run_id." >&2
+            echo "The native host and Android image must both be built. No mock/upstream IPA is distributed." >&2
+            exit 1
+          fi
+
+      - name: Download compiled Red Android 17 guest proof from this repository
+        if: inputs.phase == 'red-ipa'
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ inputs.guest_proof_run_id }}
+          name: andarium-red-android17-proof
+          github-token: ${{ github.token }}
+          path: .build/red-proof
+
+      - name: Verify modified Andarium source and compiled Android 17 proof
+        if: inputs.phase == 'red-ipa'
         shell: bash
         run: |
           set -euo pipefail
-          echo "Host compile requires a valid accepted upstream guest image; it does NOT build the custom Android 17 image."
-          bash scripts/first_build.sh "$PWD/.build/Kernarium" --build 2>&1 |
-            tee .build/ci/host-xcodebuild.log
+          python3 scripts/verify_red_android17_guest.py \
+            --proof .build/red-proof --kernarium .build/Kernarium 2>&1 |
+            tee .build/ci/red-android17-proof.log
+
+      - name: Build pinned Kernarium iOS GPU, networking and storage dependencies
+        if: inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/prepare_kernarium_ios_dependencies.sh "$PWD/.build/Kernarium" 2>&1 |
+            tee .build/ci/ios-native-dependencies.log
+
+      - name: Compile the actual modified Andarium Red iPhoneOS host
+        if: inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
+        shell: bash
+        env:
+          BUILD_PHASE: ${{ inputs.phase }}
+        run: |
+          set -euo pipefail
+          if [[ "$BUILD_PHASE" == red-ipa ]]; then
+            # Unlike host-unsigned, this mode MUST embed the verified compiled
+            # Red guest. No substitution with upstream's accepted guest.
+            bash scripts/first_build.sh "$PWD/.build/Kernarium" \
+              --build --guest-proof "$PWD/.build/red-proof" 2>&1 |
+              tee .build/ci/host-xcodebuild.log
+          else
+            echo "Compiler smoke only: upstream accepted guest is NOT modified Red Android."
+            bash scripts/first_build.sh "$PWD/.build/Kernarium" --build 2>&1 |
+              tee .build/ci/host-xcodebuild.log
+          fi
+
+      - name: Package verified modified Andarium Red Android 17 full-host IPA
+        if: inputs.phase == 'red-ipa'
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/package_unsigned_ipa.sh \
+            .build/Kernarium/.build/DerivedDataAndariumHost/Build/Products/Release-iphoneos/Andarium.app \
+            .build/ipa "$PWD/.build/Kernarium"
+
+      - name: Upload the real modified Andarium Red Android 17 unsigned IPA
+        if: inputs.phase == 'red-ipa'
+        uses: actions/upload-artifact@v4
+        with:
+          name: andarium-red-android17-fullhost-unsigned-ipa-${{ github.sha }}
+          path: |
+            .build/ipa/*.ipa
+            .build/ipa/*.txt
+          if-no-files-found: error
+          retention-days: 14
 
       - name: Persist compiler diagnostics on failure or success
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: andarium-first-compile-${{ inputs.phase }}-${{ github.sha }}
+          name: andarium-first-compile-${{ inputs.phase || (contains(github.event.head_commit.message, '[host-unsigned]') && 'host-unsigned' || 'preview') }}-${{ github.sha }}
           path: |
             .build/ci/*.txt
             .build/ci/*.log
