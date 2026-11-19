@@ -25,8 +25,8 @@ def archive(*, modules=True, release="17", build="1001"):
     )) + "\n"
     apk = io.BytesIO()
     with zipfile.ZipFile(apk, "w") as a:
-        a.writestr("AndroidManifest.xml", b"\\x03\\x00\\x08\\x00")
-        a.writestr("classes.dex", b"dex\\n039\\x00")
+        a.writestr("AndroidManifest.xml", bytes((3, 0, 8, 0)))
+        a.writestr("classes.dex", bytes((100, 101, 120, 10, 48, 51, 57, 0)))
     with zipfile.ZipFile(payload, "w") as z:
         z.writestr("SYSTEM/build.prop", buildprop)
         if modules:
