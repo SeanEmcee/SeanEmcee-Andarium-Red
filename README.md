@@ -15,6 +15,15 @@
 python3 tools/prebuild_validate_v16.py --report prebuild-v16-local.json
 ```
 
+For a real, authenticated Android guest later, use the explicit, opt-in checks:
+
+```sh
+python3 tools/verify_guest.py --check-theme-provider
+python3 tools/verify_guest.py --check-theme-write
+```
+
+The read-only check does not change the guest. The write check snapshots the old color, changes one RGB bit, verifies provider persistence and restores the original only if the test color is still present. Android offers no atomic theme compare-and-swap, so a concurrent user's change is preserved on a best-effort basis. Neither command should be run before Android 17 has actually been built and booted.
+
 **Evidence caveat:** The bundled `PREBUILD_PARITY.json` and `RELEASE_STATUS.json` capture the previous **v14** baseline. Do not reuse their 139 Python passing-test count or 44/44 source-check number as a verified v16 full-suite result. A full Android 17 compilation, authenticated ADB integration, ROM boot, and iPhone acceptance remain required for actual functional parity.
 
 ---
