@@ -26,9 +26,20 @@ enum RedMemoryChoices {
         host.memory.maximumMiB(vCPUs: cores)
     }
 
+    static func value(for preset: RedMemoryPreset, on host: HostDevice, cores: Int,
+                      cameraLive: Bool = false) -> Int {
+        switch preset {
+        case .quality: return qualityMiB(on: host, cores: cores, cameraLive: cameraLive)
+        case .graphics: return graphicsPriorityMiB(on: host, cores: cores, cameraLive: cameraLive)
+        case .safe: return safeMiB(on: host, cores: cores)
+        case .deviceLimit: return ceilingMiB(on: host, cores: cores)
+        }
+    }
+
     static func fresh(on host: HostDevice) -> Guest {
         var guest = Guest.fresh(on: host)
-        guest.memoryMiB = qualityMiB(on: host, cores: guest.cores)
+        guest.memoryMiB = value(for: RedMemoryPresetStore.load(),
+                                on: host, cores: guest.cores)
         return guest
     }
 }
@@ -40,6 +51,7 @@ struct RedMemoryPresetRow: View {
     @Binding var guest: Guest
     let host: HostDevice
     var cameraLive = false
+    @State private var preferredPreset = RedMemoryPresetStore.load()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
@@ -48,6 +60,32 @@ struct RedMemoryPresetRow: View {
                 HStack(spacing: 8) { presetButtons }
                 VStack(alignment: .leading, spacing: 8) { presetButtons }
             }
+            Menu {
+                ForEach(RedMemoryPreset.allCases) { option in
+                    Button {
+                        preferredPreset = option
+                        RedMemoryPresetStore.save(option)
+                    } label: {
+                        if preferredPreset == option {
+                            Label(option.title, systemImage: "checkmark")
+                        } else {
+                            Text(option.title)
+                        }
+                    }
+                }
+            } label: {
+                HStack {
+                    Text("Default for new guests")
+                    Spacer()
+                    Text(preferredPreset.title).foregroundStyle(.secondary)
+                    Image(systemName: "chevron.up.chevron.down")
+                }
+                .font(.footnote)
+                .padding(10)
+                .background(Color(.tertiarySystemGroupedBackground),
+                            in: .rect(cornerRadius: 12))
+            }
+            .accessibilityIdentifier("red-memory-new-guest-default")
             Text("Device limit is the highest allocation the runtime permits, not a guarantee of stability. iOS may close the app, and less memory may remain for graphics.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
