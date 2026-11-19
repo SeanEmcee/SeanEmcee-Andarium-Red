@@ -119,6 +119,17 @@ def inspection(kernarium: Path, *, source: Path = ROOT, require_artifacts: bool 
                     add("ANDD value and persistence behavior", good and
                         "ANDD_VALUE_HARNESS_" in info and "_PASS" in info, info)
         if swiftc is not None:
+            with tempfile.TemporaryDirectory(prefix="red-memory-prebuild-") as temp:
+                target = str(Path(temp) / "memory-preset-values")
+                files = [str(source / "host/RedMemoryPresetSettings.swift"),
+                         str(source / "tests/RedMemoryPresetHarness.swift")]
+                good, info = run([swiftc, *files, "-o", target], cwd=source)
+                add("Actual memory preference source compiles", good, info)
+                if good:
+                    good, info = run([target], cwd=source)
+                    add("Memory profile defaults and persistence behavior",
+                        good and "RED_MEMORY_PRESET_12_PASS" in info, info)
+        if swiftc is not None:
             for fname in red.ADD_SWIFT:
                 good, info = run([swiftc, "-frontend", "-parse",
                                   str(source / "host" / fname)], cwd=source)
