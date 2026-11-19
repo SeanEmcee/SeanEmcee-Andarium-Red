@@ -1,7 +1,7 @@
 name: Andarium Red v17 - Xcode 27 first compile (unsigned)
 # Public repository: an exact, scoped, one-time push receipt may launch
 # the Xcode preview without interactive browser authentication.
-# Only build-requests/preview-*.txt on the reviewed feature branch triggers.
+# Only dedicated preview, device-IPA or host requests on the feature branch trigger.
 # No signing secrets are used.
 on:
   push:
@@ -9,16 +9,18 @@ on:
     paths:
       - 'build-requests/preview-*.txt'
       - 'build-requests/host-*.txt'
+      - 'build-requests/ipa-*.txt'
   workflow_dispatch:
     inputs:
       phase:
-        description: "Source gate, iOS preview compile or full unsigned host compile"
+        description: "Source gate, Simulator preview, device preview IPA or full unsigned host compile"
         required: true
         type: choice
         default: preview
         options:
           - source
           - preview
+          - ipa-preview
           - host-unsigned
 
 permissions:
@@ -80,7 +82,7 @@ jobs:
             tee .build/ci/source-gate.log
 
       - name: Compile AndariumPreview with Xcode 27
-        if: inputs.phase == 'preview' || (github.event_name == 'push' && !contains(github.event.head_commit.message, '[host-unsigned]'))
+        if: inputs.phase == 'preview' || (github.event_name == 'push' && !contains(github.event.head_commit.message, '[host-unsigned]') && !contains(github.event.head_commit.message, '[ipa-preview]'))
         shell: bash
         run: |
           set -euo pipefail
@@ -91,6 +93,31 @@ jobs:
             -derivedDataPath "$GITHUB_WORKSPACE/.build/DerivedData" \
             CODE_SIGNING_ALLOWED=NO build 2>&1 |
             tee "$GITHUB_WORKSPACE/.build/ci/preview-xcodebuild.log"
+
+      - name: Build unsigned iPhoneOS AndariumPreview UI for IPA
+        if: inputs.phase == 'ipa-preview' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ipa-preview]'))
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd .build/Kernarium
+          # Override the upstream preview target's Simulator-only setting for
+          # this explicitly labeled iPhone UI import test. No Android guest.
+          xcodebuild -project Andarium/Andarium.xcodeproj \
+            -scheme AndariumPreview -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$GITHUB_WORKSPACE/.build/DerivedDataPreviewDevice" \
+            'SUPPORTED_PLATFORMS=iphoneos iphonesimulator' \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build 2>&1 |
+            tee "$GITHUB_WORKSPACE/.build/ci/preview-iphoneos-xcodebuild.log"
+
+      - name: Package validated unsigned iPhoneOS preview IPA
+        if: inputs.phase == 'ipa-preview' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[ipa-preview]'))
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/package_unsigned_ipa.sh \
+            .build/DerivedDataPreviewDevice/Build/Products/Debug-iphoneos/AndariumPreview.app \
+            .build/ipa preview
 
       - name: Build pinned Kernarium iOS GPU, networking and storage dependencies
         if: inputs.phase == 'host-unsigned' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
@@ -109,11 +136,31 @@ jobs:
           bash scripts/first_build.sh "$PWD/.build/Kernarium" --build 2>&1 |
             tee .build/ci/host-xcodebuild.log
 
+      - name: Package validated unsigned full Andarium host IPA
+        if: inputs.phase == 'host-unsigned' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/package_unsigned_ipa.sh \
+            .build/Kernarium/.build/DerivedDataAndariumHost/Build/Products/Release-iphoneos/Andarium.app \
+            .build/ipa host
+
+      - name: Upload importable unsigned iPhoneOS IPA artifact
+        if: inputs.phase == 'ipa-preview' || inputs.phase == 'host-unsigned' || (github.event_name == 'push' && (contains(github.event.head_commit.message, '[ipa-preview]') || contains(github.event.head_commit.message, '[host-unsigned]')))
+        uses: actions/upload-artifact@v4
+        with:
+          name: andarium-red-iphoneos-unsigned-ipa-${{ github.sha }}
+          path: |
+            .build/ipa/*.ipa
+            .build/ipa/*.txt
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Persist compiler diagnostics on failure or success
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: andarium-first-compile-${{ inputs.phase || (contains(github.event.head_commit.message, '[host-unsigned]') && 'host-unsigned' || 'preview') }}-${{ github.sha }}
+          name: andarium-first-compile-${{ inputs.phase || (contains(github.event.head_commit.message, '[host-unsigned]') && 'host-unsigned' || (contains(github.event.head_commit.message, '[ipa-preview]') && 'ipa-preview' || 'preview')) }}-${{ github.sha }}
           path: |
             .build/ci/*.txt
             .build/ci/*.log
