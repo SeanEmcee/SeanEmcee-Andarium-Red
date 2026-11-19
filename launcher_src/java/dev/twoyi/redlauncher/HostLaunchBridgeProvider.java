@@ -72,11 +72,25 @@ public final class HostLaunchBridgeProvider extends ContentProvider {
                 String event = HostLaunchWire.event(arg);
                 boolean saved = prefs.edit().putString(PENDING, event)
                     .putLong(TIME, System.currentTimeMillis()).commit();
+                if (saved) gate.notifyAll();
                 return field("status", saved ? "ok" : "storage_error");
             }
             if ("next".equals(method)) {
                 if (!shellOnly()) return field("status", "permission_denied");
                 String event = pending(store());
+                // A short bounded Binder wait prevents repeated ADB shell
+                // traffic while Android is idle. Enqueue wakes immediately.
+                long waitMs = 0;
+                if (arg != null && arg.matches("[0-9]{1,4}")) {
+                    waitMs = Math.min(Long.parseLong(arg), 1000L);
+                }
+                if (event == null && waitMs > 0) {
+                    try { gate.wait(waitMs); }
+                    catch (InterruptedException interrupted) {
+                        Thread.currentThread().interrupt();
+                    }
+                    event = pending(store());
+                }
                 return field("event", event == null ? "~" : event);
             }
             if ("ack".equals(method)) {
