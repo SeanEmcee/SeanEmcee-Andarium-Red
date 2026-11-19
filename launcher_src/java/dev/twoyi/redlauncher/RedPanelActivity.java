@@ -111,9 +111,11 @@ public final class RedPanelActivity extends Activity {
 
     private void openSetting(String action) {
         try { startActivity(new Intent(action)); }
-        catch (ActivityNotFoundException e) {
+        catch (ActivityNotFoundException | SecurityException e) {
             try { startActivity(new Intent(Settings.ACTION_SETTINGS)); }
-            catch (ActivityNotFoundException ignored) { toast("Setting unavailable on this guest"); }
+            catch (ActivityNotFoundException | SecurityException ignored) {
+                toast("Setting unavailable or restricted on this guest");
+            }
         }
     }
 
@@ -123,10 +125,13 @@ public final class RedPanelActivity extends Activity {
     }
 
     private void openApp(String packageName) {
-        Intent intent = getPackageManager().getLaunchIntentForPackage(packageName);
-        if (intent == null) { toast("Install this app inside Android first"); return; }
-        try { startActivity(intent); }
-        catch (ActivityNotFoundException e) { toast("This Android app could not be opened"); }
+        try {
+            Intent intent = getPackageManager().getLaunchIntentForPackage(packageName);
+            if (intent == null) { toast("Install this app inside Android first"); return; }
+            startActivity(intent);
+        } catch (ActivityNotFoundException | SecurityException e) {
+            toast("This Android app is unavailable or restricted");
+        }
     }
 
     private void buildSettings() {
@@ -188,10 +193,12 @@ public final class RedPanelActivity extends Activity {
         Intent view = new Intent(Intent.ACTION_VIEW, uri);
         if (isInstalled(TITANIUM_PACKAGE)) view.setPackage(TITANIUM_PACKAGE);
         try { startActivity(view); }
-        catch (ActivityNotFoundException e) {
+        catch (ActivityNotFoundException | SecurityException e) {
             view.setPackage(null);
             try { startActivity(view); }
-            catch (ActivityNotFoundException ignored) { toast("No browser in this guest can open the URL"); }
+            catch (ActivityNotFoundException | SecurityException ignored) {
+                toast("No permitted browser in this guest can open the URL");
+            }
         }
     }
 
