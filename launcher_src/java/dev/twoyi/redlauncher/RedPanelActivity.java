@@ -6,11 +6,14 @@ import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.database.ContentObserver;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.provider.Settings;
 import android.text.InputType;
 import android.view.Gravity;
@@ -36,6 +39,33 @@ public final class RedPanelActivity extends Activity {
     private static final String TITANIUM_PACKAGE = "io.github.jqssun.helium";
 
     private LinearLayout content;
+    private TextView hostNetworkDetail;
+    private static final Uri HOST_NETWORK_URI =
+        Uri.parse("content://dev.twoyi.redlauncher.hostnetwork/state");
+    private final ContentObserver networkObserver = new ContentObserver(
+        new Handler(Looper.getMainLooper())) {
+        @Override public void onChange(boolean selfChange) {
+            refreshHostNetworkDisplay();
+        }
+    };
+
+    @Override protected void onResume() {
+        super.onResume();
+        getContentResolver().registerContentObserver(HOST_NETWORK_URI, false, networkObserver);
+        refreshHostNetworkDisplay();
+    }
+
+    @Override protected void onPause() {
+        getContentResolver().unregisterContentObserver(networkObserver);
+        super.onPause();
+    }
+
+    private void refreshHostNetworkDisplay() {
+        if (hostNetworkDetail == null) return;
+        String route = hostTransport();
+        hostNetworkDetail.setText(RedHostTransportStatus.title(route)
+            + " — " + RedHostTransportStatus.detail(route));
+    }
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -85,7 +115,7 @@ public final class RedPanelActivity extends Activity {
         content.addView(t);
     }
 
-    private void row(String name, String description, View.OnClickListener action) {
+    private TextView row(String name, String description, View.OnClickListener action) {
         LinearLayout group = new LinearLayout(this);
         group.setOrientation(LinearLayout.VERTICAL);
         group.setPadding(dp(16), dp(13), dp(16), dp(13));
@@ -103,6 +133,7 @@ public final class RedPanelActivity extends Activity {
             group.setClickable(true);
             group.setFocusable(true);
         }
+        return detail;
     }
 
     private void setting(String name, String description, String action) {
@@ -135,7 +166,7 @@ public final class RedPanelActivity extends Activity {
             + "  •  Tap to check actual root", v -> rootInfo());
         heading("Host wireless");
         String route = hostTransport();
-        row("iPhone connection", RedHostTransportStatus.title(route)
+        hostNetworkDetail = row("iPhone connection", RedHostTransportStatus.title(route)
             + " — " + RedHostTransportStatus.detail(route), v -> hostWifiInfo());
         row("iPhone Bluetooth", "Host permission required; guest has no direct Bluetooth radio",
             v -> hostBluetoothInfo());
