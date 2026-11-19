@@ -73,6 +73,18 @@ import Foundation
         RedResolutionStore.save(setting, to: defaults)
         assert(RedResolutionStore.load(from: defaults) == old,
                "invalid settings cannot overwrite the last good value")
+        // Persisted defaults may be corrupted outside the editor.
+        let validJSON = try JSONEncoder().encode(old)
+        var corrupt = try JSONSerialization.jsonObject(with: validJSON) as! [String: Any]
+        corrupt["ratioWidth"] = Int.max
+        defaults.set(try JSONSerialization.data(withJSONObject: corrupt), forKey: RedResolutionStore.key)
+        assert(RedResolutionStore.load(from: defaults) == nil,
+               "corrupt aspect-ratio encoding is rejected")
+        setting = old
+        setting.setLinked(false)
+        setting.setWidth(Int.max)
+        setting.setLinked(true)
+        assert(!setting.linked, "linking invalid dimensions is refused")
         print("ANDD_VALUE_HARNESS_\(passed)_PASS")
     }
 }
