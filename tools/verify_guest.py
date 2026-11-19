@@ -99,7 +99,82 @@ def write_clipboard_payload(adb: str, payload: str) -> None:
 
 
 THEME_AUTHORITY = 'content://dev.twoyi.redlauncher.theme/'
-THEME_REPLY = re.compile(r'^Result: Bundle\\[\\{rgb=(0|[1-9][0-9]{0,7})\\}\\]
+THEME_REPLY = re.compile(r'^Result: Bundle\[\{rgb=(0|[1-9][0-9]{0,7})\}\]$')
+
+
+def read_theme_rgb(adb: str) -> int:
+    response = adb_run(adb, 'content', 'call', '--uri', THEME_AUTHORITY, '--method', 'get')
+    match = THEME_REPLY.fullmatch(response)
+    if not match:
+        raise ValueError('Guest theme provider returned an invalid read response')
+    rgb = int(match.group(1))
+    if not 0 <= rgb <= 0xFFFFFF:
+        raise ValueError('Guest theme provider returned out-of-range RGB')
+    return rgb
+
+
+def write_theme_rgb(adb: str, rgb: int) -> None:
+    if not 0 <= rgb <= 0xFFFFFF:
+        raise ValueError('Refusing invalid RGB before contacting Android')
+    response = adb_run(adb, 'content', 'call', '--uri', THEME_AUTHORITY,
+                       '--method', 'set', '--extra', f'rgb:i:{rgb}')
+    if response != 'Result: Bundle[{status=ok}]':
+        raise RuntimeError('Guest theme provider did not acknowledge a persisted RGB update')
+
+
+def theme_roundtrip(adb: str) -> str:
+    """Explicit test restoring prior RGB only if our test value remains present."""
+    original = read_theme_rgb(adb)
+    candidate = original ^ 0x000001
+    if read_theme_rgb(adb) != original:
+        raise RuntimeError('Theme changed before test; refusing overwrite')
+    problem: Exception | None = None
+    try:
+        write_theme_rgb(adb, candidate)
+        if read_theme_rgb(adb) != candidate:
+            raise AssertionError('Android theme set/readback mismatch')
+    except Exception as failure:
+        problem = failure
+    current = read_theme_rgb(adb)
+    if current == candidate:
+        write_theme_rgb(adb, original)
+        if read_theme_rgb(adb) != original:
+            raise AssertionError('Original guest theme could not be restored') from problem
+    elif current != original:
+        raise RuntimeError('Theme changed during test; preserving newer color') from problem
+    if problem is not None:
+        raise problem
+    return 'Guest theme set/get and original-color restoration passed; iPhone pixels remain untested'
+
+
+# Data-disk persistence checkpoint. No sensitive user content is stored.
+PERSISTENCE_FILE = '/data/local/tmp/andarium_red_persistence_v1'
+PERSISTENCE_TOKEN = re.compile(r'^[0-9a-f]{32}$')
+
+
+def read_persistence_marker(adb: str) -> str:
+    return adb_run(adb, 'cat', PERSISTENCE_FILE)
+
+
+def create_persistence_marker(adb: str) -> str:
+    token = secrets.token_hex(16)
+    # The only interpolated value is generated hexadecimal, never arbitrary input.
+    adb_run(adb, 'sh', '-c', f'umask 077; printf %s {token} > {PERSISTENCE_FILE}')
+    if read_persistence_marker(adb) != token:
+        raise AssertionError('Guest persistence marker could not be read back after writing')
+    return token
+
+
+def verify_persistence_marker(adb: str, expected: str) -> str:
+    if not PERSISTENCE_TOKEN.fullmatch(expected):
+        raise ValueError('Expected a 32-character lowercase hex persistence token')
+    observed = read_persistence_marker(adb)
+    if observed != expected:
+        raise AssertionError('Guest data disk did not retain the exact persistence marker')
+    return 'Guest data marker preserved; check separately after relaunch, app update and 7 days'
+
+
+def check(name: str, fn) -> Result:
     try:
         detail = fn()
         return Result(name, True, str(detail))
