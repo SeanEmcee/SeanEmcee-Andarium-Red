@@ -52,7 +52,7 @@ class AndroidProofPackingTests(unittest.TestCase):
     def test_rejects_named_but_invalid_apk(self):
         payload = io.BytesIO()
         with zipfile.ZipFile(payload, "w") as outer:
-            outer.writestr("SYSTEM/build.prop", "\\n".join((
+            outer.writestr("SYSTEM/build.prop", "\n".join((
                 "ro.build.version.release=17",
                 "ro.build.fingerprint=andarium-red/test",
                 "ro.build.version.incremental=1001",
