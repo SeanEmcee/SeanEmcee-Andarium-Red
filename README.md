@@ -1,3 +1,13 @@
+# Andarium Red v17 — Android Home → native Nexaris host applications
+
+**Feature source committed:** The Android HOME now offers five native-host launch shortcuts: **Nexaris, URL OS, Rap Box, Rap Keys, Settings**. These are Android launch controls, not installed IPAs. They use a strict mailbox over the existing authenticated Android ADB bridge. Nexaris mounts the live Android surface above its native shell, then fades Android away to reveal the real native destination. Tapping Nexaris returns to My Device by default or to the previously selected tab if configured.
+
+**Verified policy code:** 45/45 exact Java route checks, 25/25 exact Swift route checks, 17/17 Java mailbox UID/ack checks using Android API stubs. **NOT yet verified:** Xcode build, Android 17 rebuilt guest, registered Nexaris Andarium engine adapter, iPhone frame/timing tests. Current overall build/release gate remains **NO-GO**.
+
+[Android host handoff design and acceptance](docs/ANDROID_HOST_HANDOFF_v17.md) · [Private Nexaris source](https://github.com/SeanEmcee/Nexaris/tree/feature/nexaris-unified-app) · [Andarium source PR #2](https://github.com/SeanEmcee/SeanEmcee-Andarium-Red/pull/2)
+
+---
+
 # Andarium Red v15 — First-build preparation
 
 **Branch:** feature/andd-memory-tuning — [draft PR #2](https://github.com/SeanEmcee/SeanEmcee-Andarium-Red/pull/2).
