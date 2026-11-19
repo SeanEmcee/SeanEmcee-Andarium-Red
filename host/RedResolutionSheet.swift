@@ -15,7 +15,7 @@ struct RedResolutionSheet: View {
     @State private var heightText = ""
     @State private var selectedScaleIndex = 0
 
-    private var native: CGSize? { model.redNativePixelSize }
+    private var native: CGSize? { model.redNativeOrientedPixelSize }
 
     private var changed: Bool {
         draft != model.redResolutionSetting ||
