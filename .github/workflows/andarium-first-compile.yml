@@ -1,0 +1,107 @@
+name: Andarium Red v17 - Xcode 27 first compile (unsigned)
+# Manual only: avoids consuming private-repository Actions minutes.
+# The workflow becomes eligible for free standard runner minutes if the user
+# separately makes the source repository public. No signing secrets are used.
+on:
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: "Source gate, iOS preview compile or full unsigned host compile"
+        required: true
+        type: choice
+        default: preview
+        options:
+          - source
+          - preview
+          - host-unsigned
+
+permissions:
+  contents: read
+
+concurrency:
+  group: andarium-first-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  first-compile:
+    runs-on: xcode-27
+    timeout-minutes: 55
+    env:
+      KERNARIUM_REVISION: fbe12ee72d195f0241c4fc24090a98b259026604
+      ANDARIUM_UPSTREAM: https://github.com/imxieyi/Kernarium.git
+    steps:
+      - name: Check out exact Andarium Red source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up JDK for actual Java source harnesses
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Toolchain and workspace receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .build/ci
+          {
+            echo "Andarium source: $GITHUB_SHA"
+            echo "Reviewed Kernarium source: $KERNARIUM_REVISION"
+            uname -a
+            xcodebuild -version
+            swiftc -version
+            javac -version
+            df -h .
+          } 2>&1 | tee .build/ci/toolchain.txt
+
+      - name: Checkout exact reviewed Kernarium for source overlays
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none --no-checkout "$ANDARIUM_UPSTREAM" .build/Kernarium
+          git -C .build/Kernarium checkout --detach "$KERNARIUM_REVISION"
+          test "$(git -C .build/Kernarium rev-parse HEAD)" = "$KERNARIUM_REVISION"
+          test -f .build/Kernarium/Andarium/Andarium.xcodeproj/project.xcproj
+          test -f .build/Kernarium/android/lineage-24/overlay/lineage_andarium.mk
+
+      - name: Integrate and validate original source (no signing)
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/first_build.sh "$PWD/.build/Kernarium" 2>&1 |
+            tee .build/ci/source-gate.log
+
+      - name: Compile AndariumPreview with Xcode 27
+        if: inputs.phase == 'preview'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd .build/Kernarium
+          xcodebuild -project Andarium/Andarium.xcodeproj \
+            -scheme AndariumPreview -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$GITHUB_WORKSPACE/.build/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 |
+            tee "$GITHUB_WORKSPACE/.build/ci/preview-xcodebuild.log"
+
+      - name: Attempt unsigned Andarium host compilation
+        if: inputs.phase == 'host-unsigned'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Host compile requires a valid accepted upstream guest image; it does NOT build the custom Android 17 image."
+          bash scripts/first_build.sh "$PWD/.build/Kernarium" --build 2>&1 |
+            tee .build/ci/host-xcodebuild.log
+
+      - name: Persist compiler diagnostics on failure or success
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andarium-first-compile-${{ inputs.phase }}-${{ github.sha }}
+          path: |
+            .build/ci/*.txt
+            .build/ci/*.log
+          if-no-files-found: warn
+          retention-days: 7
