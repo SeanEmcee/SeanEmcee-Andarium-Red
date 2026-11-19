@@ -2,6 +2,7 @@
 // Compiled in Andarium/Shared by Kernarium's synchronized source folder.
 import Foundation
 import UIKit
+import Darwin
 
 /// ANDD reads the scene's *physical* pixels, never a hard-coded model table.
 /// Legacy scaled selections remain available for people who chose them.
