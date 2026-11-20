@@ -1,0 +1,1 @@
+Release bridge request for ABI29 ARM64 4 KiB kernel from successful GitHub Actions run 44663014989. Must pass pinned Kernarium verifier before creating a public release. Only kernel bytes, no Android image and no IPA.
