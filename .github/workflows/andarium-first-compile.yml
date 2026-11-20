@@ -221,7 +221,7 @@ jobs:
       # against those source trees before any use; invalid caches fail closed.
       - name: Restore pinned kernel host-tools and source cache
         id: host_tools_cache
-        if: inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
+        if: (inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))) && steps.kernel_cache.outputs.cache-hit != 'true' && steps.prior_kernel.outputs.found != 'true'
         uses: actions/cache/restore@v4
         with:
           path: |
@@ -242,7 +242,7 @@ jobs:
           key: andarium-kernel-host-tools-v1-${{ runner.os }}-${{ runner.arch }}-fbe12ee72d195f0241c4fc24090a98b259026604-${{ hashFiles('.build/Kernarium/dependencies/manifest.tsv', '.build/Kernarium/dependencies/kernel-host-tools/archives.tsv') }}
 
       - name: Prepare and independently verify Kernarium kernel host tools
-        if: inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
+        if: (inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))) && steps.kernel_cache.outputs.cache-hit != 'true' && steps.prior_kernel.outputs.found != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -250,7 +250,7 @@ jobs:
             tee .build/ci/kernel-host-tools.log
 
       - name: Save pinned kernel host-tools and authenticated source cache
-        if: (inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))) && steps.host_tools_cache.outputs.cache-hit != 'true'
+        if: (inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))) && steps.kernel_cache.outputs.cache-hit != 'true' && steps.prior_kernel.outputs.found != 'true' && steps.host_tools_cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         continue-on-error: true
         with:
