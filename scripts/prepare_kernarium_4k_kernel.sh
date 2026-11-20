@@ -28,6 +28,16 @@ read_descriptor() {
 }
 release_id="$(read_descriptor UML_KERNEL_ARTIFACT_RELEASE_ID)"
 directory="$(read_descriptor UML_KERNEL_ARTIFACT_DIRECTORY_NAME)"
+# The accepted release is a packaging/compatibility label. The replay commit
+# SHA is deliberately NOT a canonical source identity; Kernarium pins the
+# complete source tree and ordered patch series independently.
+accepted_release="$(read_descriptor UML_KERNEL_ARTIFACT_RELEASE)"
+expected_tree="$(read_descriptor UML_KERNEL_ARTIFACT_FINAL_TREE)"
+if [[ ! "$accepted_release" =~ ^6\.18\.60(-[A-Za-z0-9._-]+)?$ ||
+      ! "$expected_tree" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "ERROR: missing or unsafe accepted kernel release/tree identity" >&2
+  exit 1
+fi
 if [[ ! "$release_id" =~ ^[A-Za-z0-9._-]+$ || ! "$directory" =~ ^android-6\.18-arm64-4k-[A-Za-z0-9._-]+$ ]]; then
   echo "ERROR: unsafe or missing accepted kernel release identity" >&2
   exit 1
@@ -117,6 +127,24 @@ export GIT_COMMITTER_EMAIL='andarium-red-kernel-ci@users.noreply.github.com'
 cd "$kernarium"
 "$line/scripts/prepare-source.sh" --slice arm64
 "$line/scripts/prepare-source.sh" --slice arm64 --verify
+source_dir="$mount/linux"
+replay_commit="$(git -C "$source_dir" rev-parse HEAD)"
+replay_tree="$(git -C "$source_dir" rev-parse 'HEAD^{tree}')"
+if [[ "$replay_tree" != "$expected_tree" ]]; then
+  echo "ERROR: replayed Linux source tree $replay_tree differs from pinned $expected_tree" >&2
+  exit 1
+fi
+printf 'KERNEL_PROVENANCE_REPLAY_COMMIT=%s\n' "$replay_commit"
+printf 'KERNEL_PROVENANCE_CANONICAL_FINAL_TREE=%s\n' "$replay_tree"
+printf 'KERNEL_ACCEPTED_BUILD_RELEASE_LABEL=%s\n' "$accepted_release"
+# Do not confuse Linux's automatically generated -g<replay-commit> suffix
+# with the immutable source tree. Each clean replay has new commit timestamps
+# and hence a different commit SHA, despite an identical verified tree.
+# Override only Kbuild's release LABEL through GNU Make's normal command-line
+# variable channel. Preserve upstream source, configs, ABI, publisher,
+# descriptor and verifier unchanged. Record the true replay SHA above.
+# A plain environment KERNELRELEASE= would be overwritten by Kbuild; GNU
+# Make reads the MAKEFLAGS assignment as command-line precedence instead.
 
 # Real BTF needs authenticated, pinned pahole and static libelf.
 dependencies/prepare.sh --product kernel-host-tools
@@ -124,10 +152,15 @@ dependencies/prepare.sh --archive-manifest dependencies/kernel-host-tools/archiv
 dependencies/build-kernel-host-tools.sh --jobs 4
 dependencies/build-kernel-host-tools.sh --verify-only
 
-source_dir="$mount/linux"
 build_dir="$kernarium/.build/kernel-build/android-arm64"
-"$line/build/build-kernel.sh" --product android --slice arm64 \
+MAKEFLAGS="KERNELRELEASE=$accepted_release" \
+  "$line/build/build-kernel.sh" --product android --slice arm64 \
   --build "$build_dir" --jobs 4
+built_release="$(cat "$build_dir/include/config/kernel.release")"
+if [[ "$built_release" != "$accepted_release" ]]; then
+  echo "ERROR: built kernel release $built_release differs from pinned label $accepted_release" >&2
+  exit 1
+fi
 
 # Upstream publisher checks source identity, Android config, ELF geometry,
 # DWARF/BTF, 4KiB memory layout and bridge imports before publication.
