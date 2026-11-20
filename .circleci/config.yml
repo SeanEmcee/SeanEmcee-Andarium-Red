@@ -1,7 +1,6 @@
 version: 2.1
 
-# Cloud-only Android 17 producer. Requires this repository to be connected
-# to CircleCI and a project-level GITHUB_TOKEN with Actions read access.
+# Cloud-only Android 17 producer. Verified kernel is distributed as a\n# public, SHA256-checked release; CircleCI requires no GitHub personal token.
 # The 150 GB VM disk is a ceiling, not a guarantee that AOSP will fit.
 jobs:
   android17-red-proof:
@@ -22,7 +21,6 @@ jobs:
             set -euo pipefail
             test "$CIRCLE_BRANCH" = "feature/andd-memory-tuning"
             test "$(uname -m)" = x86_64
-            : "${GITHUB_TOKEN:?Configure GitHub Actions read token in CircleCI project settings}"
             df -h .
             free -h
             # 150 GB decimal disks contain at most ~139.7 GiB before OS.
@@ -53,7 +51,7 @@ jobs:
             git -C .build/Kernarium checkout --detach "$KERNARIUM_SHA"
             test "$(git -C .build/Kernarium rev-parse HEAD)" = "$KERNARIUM_SHA"
       - run:
-          name: Download verified kernel from successful GitHub Actions run
+          name: Download verified kernel from public GitHub release without a token
           command: |
             set -euo pipefail
             python3 scripts/download_verified_kernel_circleci.py
