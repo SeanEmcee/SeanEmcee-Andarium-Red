@@ -8,6 +8,13 @@ if (( $# != 1 )); then
   echo "Usage: bash scripts/prepare_kernarium_4k_kernel.sh KERNARIUM_PATH" >&2
   exit 2
 fi
+# Resolve our own repository before changing into the pinned Kernarium checkout.
+# BASH_SOURCE[0] may be relative when the workflow invokes this with 'bash scripts/...'.
+source_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+test -f "$source_root/scripts/prepare_kernarium_kernel_host_tools.sh" || {
+  echo "ERROR: Andarium Red kernel host-tool helper missing: $source_root" >&2
+  exit 1
+}
 kernarium="$(cd "$1" && pwd -P)"
 expected_revision=fbe12ee72d195f0241c4fc24090a98b259026604
 if [[ "$(git -C "$kernarium" rev-parse HEAD)" != "$expected_revision" ]]; then
@@ -149,7 +156,7 @@ printf 'KERNEL_ACCEPTED_BUILD_RELEASE_LABEL=%s\n' "$accepted_release"
 # Real BTF needs authenticated, pinned pahole and static libelf.
 # The workflow prepares and caches these independently; also support direct
 # script invocation on an uncached machine without lowering verification.
-bash "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)/scripts/prepare_kernarium_kernel_host_tools.sh" "$kernarium"
+bash "$source_root/scripts/prepare_kernarium_kernel_host_tools.sh" "$kernarium"
 
 build_dir="$kernarium/.build/kernel-build/android-arm64"
 MAKEFLAGS="KERNELRELEASE=$accepted_release" \
