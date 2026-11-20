@@ -1,0 +1,8 @@
+phase=host-unsigned
+scope=SeanEmcee/SeanEmcee-Andarium-Red:feature/andd-memory-tuning
+previous_run=44661556021
+previous_error=XCFramework cache validator compared names with .xcframework suffix to unsuffixed expected bundle names
+source_fix=26d1559c3a50a1af8be196572caaa6956230f49b
+reuse=verified ABI29 kernel and verified native dependencies caches
+goal=validate actual published iPhoneOS ARM64 XCFramework bundles; cache and upload framework artifact; no guest or IPA claim
+guard=real Android17 proof still required before full IPA; no substitution
