@@ -1,0 +1,1 @@
+Probe the actual free GitHub-hosted Ubuntu x86_64 disk/RAM for Andarium Red. No oversized Android source download; no synthetic proof image.
