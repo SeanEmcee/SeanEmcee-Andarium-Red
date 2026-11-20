@@ -1,0 +1,12 @@
+phase=host-unsigned
+repository=SeanEmcee/SeanEmcee-Andarium-Red
+branch=feature/andd-memory-tuning
+source_reviewed_commit=77d8441020828585c6242f4cc3548be507cf59c5
+previous_failure_run=44652986641
+previous_error=dependencies/build-kernel-host-tools.sh required build tool unavailable gmake
+fix=Provision brew GNU Make and existing Meson virtualenv before cacheable pinned host tool source replay and pahole/libelf compilation
+verified_previous_cache=ios27-native cache was successfully saved by prior job
+cache_plan=restore native iPhoneOS compiled libs, verify; restore host tools and source when needed, verify/save; verify or build and save ABI29 4KiB Android kernel
+integrity=Kernarium original ABI29 descriptor, ELF, source tree, build policy and provenance checks not waived
+do_not_modify=Nexaris
+request=single unsigned host build
