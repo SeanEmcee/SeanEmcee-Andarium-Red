@@ -48,6 +48,8 @@ for path in "${optional_paths[@]}"; do
     sudo rm -rf -- "$path"
   fi
 done
+# The previous GitHub runner probe explicitly measured 3.7G of ghcup and
+# 1.1G of Julia at /usr/local; neither is needed by pinned Android17 Soong.
 # Free GitHub-hosted images carry per-user toolchains and language caches.
 # They are unnecessary for the Android pinned-source builder, which downloads
 # its own source/toolchains. Remove only known optional paths on the disposable VM;
@@ -68,6 +70,8 @@ cache_paths=(
   /usr/share/scala
   /usr/share/kotlin
   /usr/local/share/jupyter
+  /usr/local/.ghcup
+  /usr/local/julia1.13.4
 )
 for path in "${cache_paths[@]}"; do
   if [[ -d "$path" && ! -L "$path" ]]; then

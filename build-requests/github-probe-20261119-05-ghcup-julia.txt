@@ -1,0 +1,1 @@
+Measure space recovered after removing unrelated GHCup/Haskell (3.7 GiB) and Julia (1.1 GiB) toolchains from the disposable GitHub-hosted Ubuntu runner. The actual Linux, Git, Python and Android dependencies remain intact; compile only if verified space and tools permit.
