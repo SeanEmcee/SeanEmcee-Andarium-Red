@@ -1,0 +1,14 @@
+phase=host-unsigned
+scope=SeanEmcee/SeanEmcee-Andarium-Red:feature/andd-memory-tuning
+previous_failure_run=44658099869
+previous_kernel_verified=abi29 ARM64 4KiB artifacts/14594837399
+previous_native_cache=verified and restored
+previous_kernel_host_tools_cache=verified and restored
+previous_kernel_cache=verified and saved
+last_failure=staging upstream accepted Android system image failed, absent valid modified Red image
+fix=compile and inspect iPhoneOS Android runtime XCFrameworks as standalone honest host smoke; no missing-image substitution or IPA claims
+cache=use restored verified kernel and native deps, save new source-keyed iPhoneOS runtime XCFrameworks before guest packaging
+next_gate=requires actual Red Android17 guest build from pinned Soong source using a provisioned andarium-aosp17 x86_64 Linux runner
+source_commit=c9f56f95f3f7ccb1653f5d77a1e2e0f6166a35eb
+run_scope=one unsigned host runtime compilation and XCFramework artifact upload
+no_nexaris=true
