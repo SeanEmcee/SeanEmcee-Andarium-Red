@@ -1,0 +1,12 @@
+phase=host-unsigned
+scope=SeanEmcee/SeanEmcee-Andarium-Red branch feature/andd-memory-tuning ONLY
+failed_run=44650989952
+error=Savannah gawk pinned source HTTPS 502, after successful prior native dependencies and source verification
+fix=two guarded canonical retries, fallback to exact pinned gawk Git OID from reviewed mirrors, unchanged Kernarium provenance and verifier
+expected_gawk_commit=52af7f12758da12db0ddbdb117a84e0685cd2f72
+kernel_pinned_revision=fbe12ee72d195f0241c4fc24090a98b259026604
+kernel_final_tree=ee913342fecf9f7f9836b616f5c605a036da0098
+kernel_abi=29
+caching=restore, verify, and save native iPhoneOS libraries, authenticated kernel host-tool sources/pahole/libelf, and Kernarium-verified ABI29 kernel before unsigned host Xcode build
+latest_fix_commit=9312584ba4bf2954cdf2629be4801242b6a139fd
+request=one host-unsigned build, no unverified guest image or bypass
