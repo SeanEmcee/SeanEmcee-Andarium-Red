@@ -54,19 +54,73 @@ jobs:
             test "$(git config --global --get user.name)" = "Andarium Red CI"
             test "$(git config --global --get user.email)" = "andarium-red-ci@localhost.invalid"
             echo "Configured noninteractive Android Repo identity for this CI machine."
+      - restore_cache:
+          keys:
+            - andarium-v1-reviewed-kernarium-fbe12ee72d195f0241c4fc24090a98b259026604
       - run:
-          name: Checkout exact reviewed Kernarium
+          name: Restore or fetch verified Kernarium source
           command: |
             set -euo pipefail
             mkdir -p .build
-            git clone --filter=blob:none --no-checkout https://github.com/imxieyi/Kernarium.git .build/Kernarium
-            git -C .build/Kernarium checkout --detach "$KERNARIUM_SHA"
+            if [[ ! -d .build/Kernarium/.git ]]; then
+              test ! -e .build/Kernarium
+              git clone --filter=blob:none --no-checkout https://github.com/imxieyi/Kernarium.git .build/Kernarium
+              git -C .build/Kernarium checkout --detach "$KERNARIUM_SHA"
+            fi
             test "$(git -C .build/Kernarium rev-parse HEAD)" = "$KERNARIUM_SHA"
+            test -z "$(git -C .build/Kernarium status --porcelain --untracked-files=all)"
+      - save_cache:
+          key: andarium-v1-reviewed-kernarium-fbe12ee72d195f0241c4fc24090a98b259026604
+          paths:
+            - .build/Kernarium
+      - restore_cache:
+          keys:
+            - andarium-v1-abi29-69bd28b45746a09c7b52dfd0fcc9ce728a7b20d3cf9817fe78cbd29afa7cd166
       - run:
-          name: Download verified kernel from public GitHub release without a token
+          name: Restore or fetch and independently verify pinned kernel
           command: |
             set -euo pipefail
-            python3 scripts/download_verified_kernel_circleci.py
+            kernel="$PWD/.build/android-6.18-arm64-4k-20261119-6.18.60-ca1"
+            if [[ ! -d "$kernel" ]]; then
+              test ! -e "$kernel"
+              python3 scripts/download_verified_kernel_circleci.py
+            fi
+            common="$PWD/.build/Kernarium/kernel/common"
+            python3 -B "$common/artifacts/verify-kernel-artifact.py" \
+              --artifact "$kernel" --common-root "$common" \
+              --kernel-metadata "$PWD/.build/Kernarium/kernel/mainline-6.18/patches/metadata.env" \
+              --abi-metadata "$common/abi/identity.env"
+            python3 -B "$common/artifacts/verify-kernel-artifact.py" \
+              --artifact "$kernel" --common-root "$common" \
+              --abi-metadata "$common/abi/identity.env" --compatible \
+              --expected-family android-6.18 --expected-slice arm64 \
+              --expected-release-series 6.18 \
+              --descriptor "$PWD/.build/Kernarium/kernel/mainline-6.18/artifacts/accepted-android-4k.env"
+      - save_cache:
+          key: andarium-v1-abi29-69bd28b45746a09c7b52dfd0fcc9ce728a7b20d3cf9817fe78cbd29afa7cd166
+          paths:
+            - .build/android-6.18-arm64-4k-20261119-6.18.60-ca1
+      # Cache the expensive pinned accessibility Git histories and patch replay
+      # separately from Android Repo's very large source workspace. This is
+      # saved as soon as the source is independently verified, even if Soong
+      # fails later in the job.
+      - restore_cache:
+          keys:
+            - andarium-v1-accessibility-fbe12ee72d195f0241c4fc24090a98b259026604
+      - run:
+          name: Restore or build verified pinned TalkBack eSpeak and libsonic source cache
+          command: |
+            set -euo pipefail
+            mkdir -p .build
+            printf '[user]\\n  name = Andarium Red CI\\n  email = andarium-red-ci@localhost.invalid\\n' > .build/clean-gitconfig
+            export GIT_CONFIG_NOSYSTEM=1
+            export GIT_CONFIG_GLOBAL="$PWD/.build/clean-gitconfig"
+            export GIT_TERMINAL_PROMPT=0
+            bash scripts/prepare_accessibility_cache_circleci.sh "$PWD/.build/Kernarium" "$PWD/.build/accessibility-cache"
+      - save_cache:
+          key: andarium-v1-accessibility-fbe12ee72d195f0241c4fc24090a98b259026604
+          paths:
+            - .build/accessibility-cache
 
       - run:
           name: Prepare disk-compressed source and Soong workspace (experimental)
@@ -79,6 +133,12 @@ jobs:
           command: |
             set -euo pipefail
             test "$(stat -f -c %T "$HOME/andarium-red-aosp17")" = btrfs
+            # Git identity stays available, but URL rewriting cannot change
+            # the origin seen by the pinned accessibility source verifier.
+            export GIT_CONFIG_NOSYSTEM=1
+            export GIT_CONFIG_GLOBAL="$PWD/.build/clean-gitconfig"
+            export GIT_TERMINAL_PROMPT=0
+            export ANDARIUM_ACCESSIBILITY_CACHE="$PWD/.build/accessibility-cache"
             bash scripts/build_red_android17_proof.sh \
               "$PWD/.build/Kernarium" "$HOME/andarium-red-aosp17" \
               "$PWD/.build/android-6.18-arm64-4k-20261119-6.18.60-ca1" "$PWD/.build/red-proof" \

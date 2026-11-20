@@ -120,6 +120,27 @@ if [[ ! -d "$aosp/.repo" ]]; then
   )
 fi
 
+# The source-cache is optional. It contains real pinned Git histories and
+# tracked patch replays checked by the unchanged upstream accessibility verifier.
+# Never reuse an unverified cache or silently replace a pinned checkout.
+if [[ -n "${ANDARIUM_ACCESSIBILITY_CACHE:-}" ]]; then
+  cached="$ANDARIUM_ACCESSIBILITY_CACHE/aosp"
+  python3 -B "$kernarium/android/lineage-24/tools/verify-accessibility-source.py" \
+    --android-root "$kernarium/android/lineage-24" --aosp-source "$cached"
+  for path in external/talkback external/espeak-ng; do
+    if [[ -e "$aosp/$path" || -L "$aosp/$path" ]]; then
+      echo "ERROR: refusing to overwrite existing pinned $path checkout" >&2
+      exit 1
+    fi
+  done
+  mkdir -p "$aosp/external"
+  cp -a "$cached/external/talkback" "$aosp/external/talkback"
+  cp -a "$cached/external/espeak-ng" "$aosp/external/espeak-ng"
+  python3 -B "$kernarium/android/lineage-24/tools/verify-accessibility-source.py" \
+    --android-root "$kernarium/android/lineage-24" --aosp-source "$aosp"
+  echo "ANDARIUM_ACCESSIBILITY_VERIFIED_SOURCE_CACHE_RESTORED"
+fi
+
 cd "$kernarium"
 android/lineage-24/build/prepare-sources.sh --aosp-source "$aosp" --jobs "$jobs"
 android/lineage-24/build/apply-aosp-patches.sh --aosp-source "$aosp"
