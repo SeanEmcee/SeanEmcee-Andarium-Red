@@ -28,7 +28,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: andarium-android17-proof-${{ github.ref }}}
+  group: andarium-android17-proof-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -45,9 +45,9 @@ jobs:
       - name: Validate artifact identity and build environment
         shell: bash
         env:
-          KERNEL_RUN_ID: ${{ inputs.kernel_run_id }}}
-          KERNEL_SOURCE_SHA: ${{ inputs.kernel_source_sha }}}
-          BUILD_NUMBER: ${{ inputs.build_number }}}
+          KERNEL_RUN_ID: ${{ inputs.kernel_run_id }}
+          KERNEL_SOURCE_SHA: ${{ inputs.kernel_source_sha }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
         run: |
           set -euo pipefail
           [[ "$KERNEL_RUN_ID" =~ ^[1-9][0-9]*$ ]] || exit 2
@@ -75,16 +75,16 @@ jobs:
       - name: Obtain the authenticated ABI29 ARM64 4KiB kernel from successful host build
         uses: actions/download-artifact@v4
         with:
-          run-id: ${{ inputs.kernel_run_id }}}
-          name: andarium-pinned-android17-abi29-4k-kernel-${{ inputs.kernel_source_sha }}}
-          github-token: ${{ github.token }}}
+          run-id: ${{ inputs.kernel_run_id }}
+          name: andarium-pinned-android17-abi29-4k-kernel-${{ inputs.kernel_source_sha }}
+          github-token: ${{ github.token }}
           path: .build/android-kernel
 
       - name: Build actual modified Red Android 17 using the pinned Soong tree
         shell: bash
         env:
-          BUILD_NUMBER: ${{ inputs.build_number }}}
-          DIAGNOSTIC_ROOT: ${{ inputs.diagnostic_root }}}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+          DIAGNOSTIC_ROOT: ${{ inputs.diagnostic_root }}
         run: |
           set -euo pipefail
           args=()
