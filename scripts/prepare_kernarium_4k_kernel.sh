@@ -146,39 +146,10 @@ printf 'KERNEL_ACCEPTED_BUILD_RELEASE_LABEL=%s\n' "$accepted_release"
 # A plain environment KERNELRELEASE= would be overwritten by Kbuild; GNU
 # Make reads the MAKEFLAGS assignment as command-line precedence instead.
 
-# Real BTF needs authenticated, pinned pahole and static libelf. Fetch the
-# actual upstream Git objects first. Savannah's HTTPS Git service can return
-# intermittent 502s for gawk; retry that precise transient failure, then use
-# a byte-identical pinned Git commit from a reviewed mirror as *transport*.
-# Never change dependencies/manifest.tsv, its canonical repository identity,
-# the pinned commit, patch replay, or Kernarium's source verifier.
-host_prepare_log="$kernarium/.build/kernel-host-tools-source-prepare.log"
-prepared=0
-for attempt in 1 2; do
-  if dependencies/prepare.sh --product kernel-host-tools >"$host_prepare_log" 2>&1; then
-    prepared=1
-    break
-  fi
-  if ! grep -Fq 'git.savannah.gnu.org/git/gawk.git' "$host_prepare_log" ||
-     ! grep -Eq 'error: 50(2|3|4)' "$host_prepare_log"; then
-    tail -n 80 "$host_prepare_log" >&2
-    echo "ERROR: pinned host-tool source preparation failed for a reason other than the known Savannah outage" >&2
-    exit 1
-  fi
-  echo "Gawk source fetch got a transient Savannah HTTP 50x; canonical retry $attempt/2"
-  sleep 3
-done
-if (( ! prepared )); then
-  echo "Canonical Gawk Git transport unavailable; seeding the identical pinned Git object from reviewed mirror"
-  # The guarded seed owns no source identity and accepts only one hard-pinned
-  # Gawk commit; the original prepare.sh still verifies it as usual.
-  bash "$GITHUB_WORKSPACE/scripts/seed_pinned_gawk_git_cache.sh" "$kernarium"
-  dependencies/prepare.sh --product kernel-host-tools
-fi
-dependencies/prepare.sh --product kernel-host-tools --verify
-dependencies/prepare.sh --archive-manifest dependencies/kernel-host-tools/archives.tsv
-dependencies/build-kernel-host-tools.sh --jobs 4
-dependencies/build-kernel-host-tools.sh --verify-only
+# Real BTF needs authenticated, pinned pahole and static libelf.
+# The workflow prepares and caches these independently; also support direct
+# script invocation on an uncached machine without lowering verification.
+bash "$GITHUB_WORKSPACE/scripts/prepare_kernarium_kernel_host_tools.sh" "$kernarium"
 
 build_dir="$kernarium/.build/kernel-build/android-arm64"
 MAKEFLAGS="KERNELRELEASE=$accepted_release" \
