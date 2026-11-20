@@ -43,6 +43,17 @@ jobs:
             git lfs version
             repo version
       - run:
+          name: Configure noninteractive Android Repo Git identity
+          command: |
+            set -euo pipefail
+            # Repo init runs twice (initial workspace and pinned manifest prep).
+            # Configure this ephemeral build VM rather than answering a prompt.
+            git config --global user.name "Andarium Red CI"
+            git config --global user.email "andarium-red-ci@localhost.invalid"
+            test "$(git config --global --get user.name)" = "Andarium Red CI"
+            test "$(git config --global --get user.email)" = "andarium-red-ci@localhost.invalid"
+            echo "Configured noninteractive Android Repo identity for this CI machine."
+      - run:
           name: Checkout exact reviewed Kernarium
           command: |
             set -euo pipefail
