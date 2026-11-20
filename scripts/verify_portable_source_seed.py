@@ -64,6 +64,15 @@ for item in paths:
         for filename in files:
             file = Path(folder) / filename
             if file.is_symlink():
+                if file.parent.name == "hooks":
+                    # Repo installs commit hooks as symlinks to its own client.
+                    # Cached Git object stores are a portable download aid, not
+                    # executable checkout hooks. The link is broken after
+                    # relocating the store into the cache seed, so remove
+                    # ONLY the symlink from this throwaway restored copy.
+                    # This never modifies the immutable Actions cache.
+                    file.unlink()
+                    continue
                 if not validate_link(file).is_file():
                     fail("symlinked Git file target is not a file")
                 continue

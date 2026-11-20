@@ -1,0 +1,1 @@
+Rerun portable source Git-object cache export after safely removing only Git hook symlinks that point to missing Repo launcher paths from the disposable restored copy; preserve all actual Git objects and the saved GH cache.
