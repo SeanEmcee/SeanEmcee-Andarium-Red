@@ -7,7 +7,9 @@ usage() {
   cat <<'EOF'
 Usage: bash scripts/first_build.sh /path/to/Kernarium [options]
   --preview                Unsigned settings UI compile (no Android image needed)
-  --build                  Unsigned full host build with runtime & Android image
+  --build                  Unsigned full host build (requires verified Red guest)
+  --runtime-only           With --build, compile/verify the host XCFrameworks
+                           without staging Android or claiming a full IPA
   --with-apps              Fetch and SHA-256 validate the six pinned official
                            Android apps, then stage for ADB first-boot install
   --guest-proof DIRECTORY  Stage a separately built Android 17 unsigned proof
@@ -22,9 +24,11 @@ shift
 BUILD=""
 WITH_APPS=0
 GUEST_PROOF=""
+RUNTIME_ONLY=0
 while (( $# )); do
   case "$1" in
     --preview|--build) BUILD="$1" ;;
+    --runtime-only) RUNTIME_ONLY=1 ;;
     --with-apps) WITH_APPS=1 ;;
     --guest-proof)
       if (( $# < 2 )); then echo "ERROR: --guest-proof needs directory" >&2; exit 2; fi
@@ -33,6 +37,14 @@ while (( $# )); do
   esac
   shift
 done
+if (( RUNTIME_ONLY )) && { [[ "$BUILD" != "--build" ]] || [[ -n "$GUEST_PROOF" ]]; }; then
+  echo "ERROR: --runtime-only requires --build and cannot stage a guest image" >&2
+  exit 2
+fi
+if [[ "$BUILD" == "--build" && $RUNTIME_ONLY -eq 0 && -z "$GUEST_PROOF" ]]; then
+  echo "ERROR: full Red host build requires a verified --guest-proof; use --runtime-only to compile just the frameworks" >&2
+  exit 2
+fi
 if [[ -n "$GUEST_PROOF" && "$BUILD" != "--build" ]]; then
   echo "ERROR: --guest-proof requires --build" >&2; exit 2
 fi
@@ -106,10 +118,22 @@ if [[ "$BUILD" == "--preview" ]]; then
   exit 0
 fi
 
-echo "Packaging Kernarium iOS Android runtime..."
-cmake --preset kernarium-ios-device-android
-cmake --build --preset kernarium-ios-device-android
-Kernarium/scripts/package-ios-frameworks.sh --runtimes android
+echo "Preparing the verified Kernarium iPhoneOS Android runtime..."
+if [[ "${ANDARIUM_REUSE_VERIFIED_RUNTIME:-0}" != "1" ]]; then
+  cmake --preset kernarium-ios-device-android
+  cmake --build --preset kernarium-ios-device-android
+  Kernarium/scripts/package-ios-frameworks.sh --runtimes android
+else
+  echo "A prior immutable source-keyed XCFramework cache was restored; validating it before use."
+fi
+python3 "$SOURCE/scripts/verify_ios_runtime_xcframeworks.py" \
+  --root "$KERNARIUM/.build/kernarium-xcframeworks" \
+  --kernarium "$KERNARIUM"
+echo "VERIFIED_IOS_ANDROID_RUNTIME_XCFRAMEWORKS=$KERNARIUM/.build/kernarium-xcframeworks"
+if (( RUNTIME_ONLY )); then
+  echo "HOST_RUNTIME_ONLY_VERIFIED: no Android guest staged and no full IPA built."
+  exit 0
+fi
 
 if [[ -n "$GUEST_PROOF" ]]; then
   if [[ ! -d "$GUEST_PROOF" ]]; then echo "ERROR: guest proof directory missing" >&2; exit 1; fi
