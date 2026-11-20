@@ -1,6 +1,7 @@
 version: 2.1
 
-# Cloud-only Android 17 producer. Verified kernel is distributed as a\n# public, SHA256-checked release; CircleCI requires no GitHub personal token.
+# Cloud-only Android 17 producer. Verified kernel is distributed as a
+# public, SHA256-checked release; CircleCI requires no GitHub personal token.
 # The 150 GB VM disk is a ceiling, not a guarantee that AOSP will fit.
 jobs:
   android17-red-proof:
@@ -39,7 +40,7 @@ jobs:
             # Ubuntu 24.04 publishes Android's repo launcher as "repo" in multiverse.
             sudo add-apt-repository -y multiverse
             sudo apt-get update
-            sudo apt-get install -y git-lfs repo openjdk-17-jdk python3 zip unzip curl jq
+            sudo apt-get install -y git-lfs repo openjdk-17-jdk python3 zip unzip curl jq btrfs-progs
             git lfs version
             repo version
       - run:
@@ -68,18 +69,30 @@ jobs:
             python3 scripts/download_verified_kernel_circleci.py
 
       - run:
+          name: Prepare disk-compressed source and Soong workspace (experimental)
+          command: |
+            set -euo pipefail
+            bash scripts/prepare_compressed_aosp_circleci.sh "$HOME/andarium-red-aosp17"
+      - run:
           name: Compile genuine modified Red Android 17 image and verify
           no_output_timeout: 30m
           command: |
             set -euo pipefail
-            mkdir -p "$HOME/andarium-red-aosp17"
+            test "$(stat -f -c %T "$HOME/andarium-red-aosp17")" = btrfs
             bash scripts/build_red_android17_proof.sh \
               "$PWD/.build/Kernarium" "$HOME/andarium-red-aosp17" \
               "$PWD/.build/android-6.18-arm64-4k-20261119-6.18.60-ca1" "$PWD/.build/red-proof" \
-              "$BUILD_NUMBER" --jobs 4 --diagnostic-userdebug
+              "$BUILD_NUMBER" --jobs 2 --diagnostic-userdebug
             python3 .build/Kernarium/Andarium/scripts/stage-system-image.py \
               --release "$PWD/.build/red-proof" --unsigned-proof \
               --output "$PWD/.build/andarium-system"
+      - run:
+          name: Record compressed workspace disk usage, including failures
+          when: always
+          command: |
+            set -euo pipefail
+            df -h "$HOME/andarium-red-aosp17" /
+            sudo btrfs filesystem usage "$HOME/andarium-red-aosp17" || true
       - store_artifacts:
           path: .build/red-proof
           destination: andarium-red-android17-proof
