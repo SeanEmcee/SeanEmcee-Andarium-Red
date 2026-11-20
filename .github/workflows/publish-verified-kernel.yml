@@ -1,0 +1,86 @@
+name: Publish verified pinned Android 17 kernel for CircleCI
+
+# This release-only bridge runs on a small GitHub Linux runner. It does not
+# rebuild the kernel, Android system, or iPhoneOS host, and it never signs an IPA.
+on:
+  push:
+    branches: [feature/andd-memory-tuning]
+    paths:
+      - 'build-requests/publish-kernel-*.txt'
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: publish-andarium-kernel-abi29-ca1-20261119
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out reviewed Andarium Red branch
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Download previously built kernel using built-in Actions credentials
+        uses: actions/download-artifact@v4
+        with:
+          run-id: '44663014989'
+          name: andarium-pinned-android17-abi29-4k-kernel-46d252bf087411be9a4dfe2013f321a06bc566c4
+          github-token: ${{ github.token }}
+          path: .build/android-kernel
+
+      - name: Check out exact reviewed Kernarium source revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          git clone --filter=blob:none --no-checkout https://github.com/imxieyi/Kernarium.git .build/Kernarium
+          git -C .build/Kernarium checkout --detach fbe12ee72d195f0241c4fc24090a98b259026604
+          test "$(git -C .build/Kernarium rev-parse HEAD)" = fbe12ee72d195f0241c4fc24090a98b259026604
+
+      - name: Independently verify authentic ABI29 Android ARM64 4 KiB kernel
+        shell: bash
+        run: |
+          set -euo pipefail
+          common="$PWD/.build/Kernarium/kernel/common"
+          kernel="$PWD/.build/android-kernel"
+          python3 -B "$common/artifacts/verify-kernel-artifact.py" \
+            --artifact "$kernel" --common-root "$common" \
+            --kernel-metadata "$PWD/.build/Kernarium/kernel/mainline-6.18/patches/metadata.env" \
+            --abi-metadata "$common/abi/identity.env"
+          python3 -B "$common/artifacts/verify-kernel-artifact.py" \
+            --artifact "$kernel" --common-root "$common" \
+            --abi-metadata "$common/abi/identity.env" \
+            --compatible --expected-family android-6.18 \
+            --expected-slice arm64 --expected-release-series 6.18 \
+            --descriptor "$PWD/.build/Kernarium/kernel/mainline-6.18/artifacts/accepted-android-4k.env"
+
+      - name: Create checksum-verified public bridge archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          name=andarium-kernel-abi29-ca1-20261119
+          tar -C .build -czf ".build/$name.tar.gz" android-kernel
+          (cd .build && sha256sum "$name.tar.gz" > "$name.sha256")
+          cat ".build/$name.sha256"
+
+      - name: Publish the exact verified kernel as an immutable draft-free GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          name=andarium-kernel-abi29-ca1-20261119
+          if gh release view "$name" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "ERROR: $name release already exists. Refuse to overwrite an existing kernel." >&2
+            exit 1
+          fi
+          gh release create "$name" ".build/$name.tar.gz" ".build/$name.sha256" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" --title "Verified Andarium ABI29 4 KiB kernel (ca1)" \
+            --notes "Public transfer of the already-built verified ABI29 ARM64 4 KiB ca1 kernel from Actions run 44663014989, source SHA 46d252bf087411be9a4dfe2013f321a06bc566c4. Verified against pinned Kernarium fbe12ee72d195f0241c4fc24090a98b259026604 before publication. This is not an Android system image or an IPA." \
+            --latest=false
