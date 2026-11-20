@@ -14,7 +14,10 @@ expected_repo='https://git.savannah.gnu.org/git/gawk.git'
 expected_commit='52af7f12758da12db0ddbdb117a84e0685cd2f72'
 # This GitHub mirror was checked to contain the identical full Git object.
 # Fetching an identical 160-bit Git commit changes transport, not source.
-mirror='https://github.com/GitMirroring/gawk.git'
+mirrors=(
+  'https://github.com/GitMirroring/gawk.git'
+  'https://github.com/sailfishos-mirror/gawk.git'
+)
 read -r original pinned < <(
   awk -F '\t' '$1 == "gawk" { print $4, $5; count++ }
   END { if (count != 1) exit 1 }' "$manifest"
@@ -37,8 +40,19 @@ cleanup() { if [[ -d "$staging" ]]; then rm -rf -- "$staging"; fi; }
 trap cleanup EXIT
 git -C "$staging" init --quiet
 git -C "$staging" remote add origin "$expected_repo"
-git -C "$staging" -c protocol.version=2 fetch --no-tags --depth 1 \
-  "$mirror" "$expected_commit"
+fetched=0
+for mirror in "${mirrors[@]}"; do
+  echo "Fetching exact pinned Gawk commit from $mirror"
+  if git -C "$staging" -c protocol.version=2 fetch --no-tags --depth 1 \
+      "$mirror" "$expected_commit"; then
+    fetched=1
+    break
+  fi
+done
+if (( ! fetched )); then
+  echo "ERROR: neither reviewed mirror supplied the pinned Git commit" >&2
+  exit 1
+fi
 actual="$(git -C "$staging" rev-parse 'FETCH_HEAD^{commit}')"
 if [[ "$actual" != "$expected_commit" ]]; then
   echo "ERROR: mirror provided a different Git commit identity" >&2
