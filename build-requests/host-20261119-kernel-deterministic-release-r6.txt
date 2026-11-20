@@ -1,0 +1,8 @@
+phase=host-unsigned
+purpose=Rebuild real pinned Andarium Red ABI29 ARM64 4KiB Darwin UML kernel with deterministic accepted Kbuild release label; preserve canonical Linux source tree, actual replay SHA, original Kernarium descriptor/publisher/verifier, and full unsigned host compile
+fix_commit=ba5f4db5f81a87b01e3d6782639f34b7632394bf
+failed_run=44645483895
+expected_kernel_release=6.18.60-g0f1aac6de72d
+expected_canonical_tree=ee913342fecf9f7f9836b616f5c605a036da0098
+expected_abi=29
+important=Do not claim successful deliverables until Kernarium source, artifact, Xcode, and guest image verification gates pass
