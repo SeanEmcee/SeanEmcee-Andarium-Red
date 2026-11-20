@@ -1,0 +1,24 @@
+name: Andarium Red - verified Soong in-process memory probe
+on:
+  push:
+    branches: [feature/andd-memory-tuning]
+    paths:
+      - 'build-requests/soong-inprocess-probe-*.txt'
+permissions:
+  contents: read
+jobs:
+  verify-host-only-go-runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate original source guard, in-process Go policy, and restore
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B -m py_compile scripts/patch_soong_host_runtime.py
+          python3 -B scripts/test_soong_host_runtime_patch.py
+          bash -n scripts/build_red_android17_proof.sh
+          echo 'Verified Go limit set within the Soong host binary even if Ninja clears the environment.' >> "$GITHUB_STEP_SUMMARY"

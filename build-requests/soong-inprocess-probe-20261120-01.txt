@@ -1,0 +1,1 @@
+Validate exact in-process Go Soong host runtime memory controls after pinned AOSP source verification. No full Android compilation, run a test first.

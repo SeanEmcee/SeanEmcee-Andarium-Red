@@ -209,9 +209,19 @@ fi
 variant=user
 if (( diagnostic )); then variant=userdebug; fi
 out="$aosp/out/andarium-red-$variant"
+# Original pinned Repo, patches, Mesa and accessibility checks ran above.
+# This explicit build-host-only change does not modify the Android guest.
+python3 -B "$repo_source/scripts/patch_soong_host_runtime.py" apply \
+  --workspace "$aosp" --audit "$repo_source/.build/ci/soong-memory-audit.txt"
+restore_host_soong() {
+  python3 -B "$repo_source/scripts/patch_soong_host_runtime.py" restore --workspace "$aosp" || true
+}
+trap restore_host_soong EXIT
 android/lineage-24/build/build-aosp.sh \
   --aosp-source "$aosp" --out "$out" --kernel-artifact "$artifact" \
   --build-number "$number" --jobs "$jobs"
+restore_host_soong
+trap - EXIT
 
 # The reviewed Soong producer emits one canonical target-files archive.
 # Never accept stale or differently named output via a wildcard search.
