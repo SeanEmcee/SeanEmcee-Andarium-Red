@@ -51,9 +51,16 @@ def main() -> int:
             with urllib.request.urlopen(request, timeout=30) as response:
                 document = json.load(response)
         except (OSError, ValueError, urllib.error.HTTPError) as exc:
-            raise SystemExit(
-                f"cannot inspect prior GitHub kernel artifacts: {type(exc).__name__}"
-            ) from exc
+            # Artifact lookup is an optimization, never a build prerequisite.
+            # On API/network errors prefer a fresh build; the kernel integrity
+            # verifier remains mandatory and is not affected by this fallback.
+            print(
+                f"WARNING: prior kernel artifact discovery unavailable "
+                f"({type(exc).__name__}); building from pinned source",
+                file=sys.stderr,
+            )
+            candidates.clear()
+            break
         artifacts = document.get("artifacts", [])
         if not isinstance(artifacts, list):
             raise SystemExit("unexpected GitHub Actions artifact metadata")
