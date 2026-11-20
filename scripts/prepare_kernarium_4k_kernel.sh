@@ -99,9 +99,9 @@ if ! hdiutil attach -nobrowse -mountpoint "$mount" "$image"; then
 fi
 attached=1
 echo "KERNEL_VOLUME_STAGE: verifying filesystem is case sensitive"
-testfile="$mount/.andarium-red-caseprobe-$"
+testfile="$mount/.andarium-red-caseprobe"
 printf '%s\n' "probe" > "$testfile"
-if [[ -e "$mount/.ANDARIUM-RED-CASEPROBE-$" ]]; then
+if [[ -e "$mount/.ANDARIUM-RED-CASEPROBE" ]]; then
   rm -f "$testfile"
   echo "ERROR: kernel source mount is not case sensitive" >&2
   exit 1
