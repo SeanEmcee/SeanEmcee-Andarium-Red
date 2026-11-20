@@ -43,3 +43,18 @@ The existing original source and integrity checks remain mandatory.
 GitHub cannot create an oversized cloud machine for free on demand.
 This workflow makes that limitation explicit rather than promising an
 unrealistic cloud-only build. No Nexaris source or jobs are involved.
+
+## GitHub-hosted compressed build experiment
+
+The live probe on run 44696453263 measured a real 145G root filesystem
+with approximately 89G free, despite standard published runner specs.
+A second, explicitly verified probe deletes only unrelated preinstalled
+toolchains on a disposable hosted Ubuntu VM. If it recovers at least
+122 GiB usable before the build, the compressed-source producer can be
+triggered by an explicit commit under build-requests/github-hosted-*.txt
+whose message contains [github-hosted]. The hosted build has a 360-minute
+limit and uses the same verified kernel, pinned sources and source caches.
+No full guest build is triggered before the capacity probe passes.
+
+This experiment can still fail from insufficient storage or memory;
+do not claim a working image or successful IPA until its real artifacts pass.

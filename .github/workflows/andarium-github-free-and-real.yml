@@ -6,6 +6,7 @@ on:
     paths:
       - 'build-requests/github-probe-*.txt'
       - 'build-requests/github-real-*.txt'
+      - 'build-requests/github-hosted-*.txt'
   workflow_dispatch:
     inputs:
       mode:
@@ -42,6 +43,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Reclaim unrelated preinstalled toolchains on disposable free runner
+        shell: bash
+        run: bash scripts/prepare_github_hosted_disk.sh
       - name: Measure actual free runner storage, RAM and architecture
         shell: bash
         run: |
@@ -70,6 +74,142 @@ jobs:
           path: .build/ci/free-github-runner-capacity.txt
           if-no-files-found: error
           retention-days: 14
+
+  github-hosted-genuine-red-guest:
+    # Deliberately opt-in. Never run on an unverified 14GB disk or for a probe.
+    if: github.ref == 'refs/heads/feature/andd-memory-tuning' && github.event_name == 'push' && contains(github.event.head_commit.message, '[github-hosted]')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    env:
+      KERNARIUM_SHA: fbe12ee72d195f0241c4fc24090a98b259026604
+      KERNEL_DIR: android-6.18-arm64-4k-20261119-6.18.60-ca1
+      BUILD_NUMBER: '1001'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Reclaim disk space and enforce sufficient capacity
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/prepare_github_hosted_disk.sh
+          test "$(uname -m)" = x86_64
+          free_kib="$(df -Pk / | awk 'END{print $4}')"
+          [[ "$free_kib" =~ ^[0-9]+$ ]] && (( free_kib >= 127926272 )) || {
+            echo 'ERROR: Not enough free capacity for compressed pinned AOSP17 and reserve' >&2
+            exit 1
+          }
+      - name: Install Linux Repo and Android 17 build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y software-properties-common
+          sudo add-apt-repository -y multiverse
+          sudo apt-get update
+          sudo apt-get install -y git-lfs repo openjdk-17-jdk python3 zip unzip curl jq btrfs-progs
+          git config --global user.name 'Andarium Red CI'
+          git config --global user.email 'andarium-red-ci@localhost.invalid'
+          git lfs version
+          repo version
+          df -h /
+      - uses: actions/cache/restore@v4
+        with:
+          path: .build/Kernarium
+          key: andarium-gh-kernarium-fbe12ee72d195f0241c4fc24090a98b259026604
+      - name: Restore or fetch exact pinned Kernarium source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .build
+          if [[ ! -d .build/Kernarium/.git ]]; then
+            test ! -e .build/Kernarium
+            git clone --filter=blob:none --no-checkout https://github.com/imxieyi/Kernarium.git .build/Kernarium
+            git -C .build/Kernarium checkout --detach "$KERNARIUM_SHA"
+          fi
+          test "$(git -C .build/Kernarium rev-parse HEAD)" = "$KERNARIUM_SHA"
+          test -z "$(git -C .build/Kernarium status --porcelain --untracked-files=all)"
+      - uses: actions/cache/save@v4
+        with:
+          path: .build/Kernarium
+          key: andarium-gh-kernarium-fbe12ee72d195f0241c4fc24090a98b259026604
+      - uses: actions/cache/restore@v4
+        with:
+          path: .build/android-6.18-arm64-4k-20261119-6.18.60-ca1
+          key: andarium-gh-abi29-69bd28b45746a09c7b52dfd0fcc9ce728a7b20d3cf9817fe78cbd29afa7cd166
+      - name: Fetch or restore and independently verify ABI29 kernel
+        shell: bash
+        run: |
+          set -euo pipefail
+          kernel="$PWD/.build/$KERNEL_DIR"
+          if [[ ! -d "$kernel" ]]; then
+            test ! -e "$kernel"
+            python3 scripts/download_verified_kernel_circleci.py
+          fi
+          common="$PWD/.build/Kernarium/kernel/common"
+          python3 -B "$common/artifacts/verify-kernel-artifact.py" \
+            --artifact "$kernel" --common-root "$common" \
+            --kernel-metadata "$PWD/.build/Kernarium/kernel/mainline-6.18/patches/metadata.env" \
+            --abi-metadata "$common/abi/identity.env"
+          python3 -B "$common/artifacts/verify-kernel-artifact.py" \
+            --artifact "$kernel" --common-root "$common" \
+            --abi-metadata "$common/abi/identity.env" \
+            --compatible --expected-family android-6.18 \
+            --expected-slice arm64 --expected-release-series 6.18 \
+            --descriptor "$PWD/.build/Kernarium/kernel/mainline-6.18/artifacts/accepted-android-4k.env"
+      - uses: actions/cache/save@v4
+        with:
+          path: .build/android-6.18-arm64-4k-20261119-6.18.60-ca1
+          key: andarium-gh-abi29-69bd28b45746a09c7b52dfd0fcc9ce728a7b20d3cf9817fe78cbd29afa7cd166
+      - uses: actions/cache/restore@v4
+        with:
+          path: .build/accessibility-cache
+          key: andarium-gh-accessibility-fbe12ee72d195f0241c4fc24090a98b259026604
+      - name: Prepare or verify cached TalkBack eSpeak and libsonic checkouts
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config --file "$PWD/.build/clean-gitconfig" user.name 'Andarium Red CI'
+          git config --file "$PWD/.build/clean-gitconfig" user.email 'andarium-red-ci@localhost.invalid'
+          export GIT_CONFIG_NOSYSTEM=1
+          export GIT_CONFIG_GLOBAL="$PWD/.build/clean-gitconfig"
+          export GIT_TERMINAL_PROMPT=0
+          bash scripts/prepare_accessibility_cache_circleci.sh "$PWD/.build/Kernarium" "$PWD/.build/accessibility-cache"
+      - uses: actions/cache/save@v4
+        with:
+          path: .build/accessibility-cache
+          key: andarium-gh-accessibility-fbe12ee72d195f0241c4fc24090a98b259026604
+      - name: Initialize Btrfs compressed pinned Android 17 workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/prepare_compressed_aosp_circleci.sh "$HOME/andarium-red-aosp17"
+          test "$(stat -f -c %T "$HOME/andarium-red-aosp17")" = btrfs
+      - name: Compile actual LineageOS24 Android17 Red image and verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          export GIT_CONFIG_NOSYSTEM=1
+          export GIT_CONFIG_GLOBAL="$PWD/.build/clean-gitconfig"
+          export GIT_TERMINAL_PROMPT=0
+          export ANDARIUM_ACCESSIBILITY_CACHE="$PWD/.build/accessibility-cache"
+          bash scripts/build_red_android17_proof.sh \
+            "$PWD/.build/Kernarium" "$HOME/andarium-red-aosp17" \
+            "$PWD/.build/$KERNEL_DIR" "$PWD/.build/red-proof" \
+            "$BUILD_NUMBER" --jobs 2 --diagnostic-userdebug
+          python3 -B scripts/verify_red_android17_guest.py \
+            --proof .build/red-proof --kernarium .build/Kernarium
+          python3 .build/Kernarium/Andarium/scripts/stage-system-image.py \
+            --release "$PWD/.build/red-proof" --unsigned-proof \
+            --output "$PWD/.build/andarium-system"
+      - name: Upload real verified Android 17 Red proof (never fabricated)
+        uses: actions/upload-artifact@v4
+        with:
+          name: andarium-red-android17-proof
+          path: .build/red-proof/
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
 
   genuine-red-guest:
     if: github.ref == 'refs/heads/feature/andd-memory-tuning' && ((github.event_name == 'push' && contains(github.event.head_commit.message, '[github-real]')) || (github.event_name == 'workflow_dispatch' && inputs.mode == 'self-hosted'))
