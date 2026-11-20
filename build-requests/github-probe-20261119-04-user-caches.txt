@@ -1,0 +1,1 @@
+Reclaim optional per-user SDKs, Maven/Gradle, rust toolchains and caches on GitHub's disposable hosted runner. Measure storage and log remaining biggest directories; only launch Android17 if safe Btrfs threshold passes.

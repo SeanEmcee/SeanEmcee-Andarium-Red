@@ -48,6 +48,33 @@ for path in "${optional_paths[@]}"; do
     sudo rm -rf -- "$path"
   fi
 done
+# Free GitHub-hosted images carry per-user toolchains and language caches.
+# They are unnecessary for the Android pinned-source builder, which downloads
+# its own source/toolchains. Remove only known optional paths on the disposable VM;
+# leave apt's JDK, Git, Python stdlib, /usr/bin, and /usr/lib intact.
+cache_paths=(
+  /home/runner/.rustup
+  /home/runner/.cargo
+  /home/runner/.cache
+  /home/runner/.npm
+  /home/runner/.local/share/pnpm
+  /home/runner/.local/share/JetBrains
+  /usr/local/.rustup
+  /usr/local/.cargo
+  /usr/share/gradle
+  /opt/gradle
+  /opt/apache-maven
+  /usr/share/maven
+  /usr/share/scala
+  /usr/share/kotlin
+  /usr/local/share/jupyter
+)
+for path in "${cache_paths[@]}"; do
+  if [[ -d "$path" && ! -L "$path" ]]; then
+    du -sh "$path" || true
+    sudo rm -rf -- "$path"
+  fi
+done
 # Docker image layers are unrelated to the in-tree Soong producer. Use Docker's
 # own cleanup API, never delete /var/lib/docker while dockerd is running.
 if command -v docker >/dev/null 2>&1; then
@@ -62,6 +89,15 @@ python3 -c 'import os,hashlib,tarfile,subprocess,urllib.request' || {
   echo 'ERROR: necessary Python standard library unavailable after cleanup' >&2; exit 1;
 }
 echo 'AFTER'; df -h /
+# If the minimum still isn't met, print the largest *top-level* remaining
+# directories to identify precise, safe candidates rather than guessing.
+available_now="$(df -Pk / | awk 'END{print $4}')"
+if [[ "$available_now" =~ ^[0-9]+$ ]] && (( available_now < 127926272 )); then
+  for directory in /opt /usr/local /var /home/runner; do
+    echo "REMAINING_DISK_USAGE_TOP_LEVEL=$directory"
+    timeout 60 sudo du -x -h --max-depth=1 "$directory" 2>/dev/null | sort -h | tail -n 18 || true
+  done
+fi
 free_kib="$(df -Pk / | awk 'END{print $4}')"
 echo "RECLAIMED_RUNNER_AVAILABLE_KIB=$free_kib"
 if (( free_kib >= 127926272 )); then
