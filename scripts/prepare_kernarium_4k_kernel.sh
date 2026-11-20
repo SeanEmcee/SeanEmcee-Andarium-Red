@@ -149,7 +149,7 @@ printf 'KERNEL_ACCEPTED_BUILD_RELEASE_LABEL=%s\n' "$accepted_release"
 # Real BTF needs authenticated, pinned pahole and static libelf.
 # The workflow prepares and caches these independently; also support direct
 # script invocation on an uncached machine without lowering verification.
-bash "$GITHUB_WORKSPACE/scripts/prepare_kernarium_kernel_host_tools.sh" "$kernarium"
+bash "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)/scripts/prepare_kernarium_kernel_host_tools.sh" "$kernarium"
 
 build_dir="$kernarium/.build/kernel-build/android-arm64"
 MAKEFLAGS="KERNELRELEASE=$accepted_release" \
