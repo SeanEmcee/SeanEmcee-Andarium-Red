@@ -131,6 +131,71 @@ jobs:
             --proof .build/red-proof --kernarium .build/Kernarium 2>&1 |
             tee .build/ci/red-android17-proof.log
 
+      # Cache immutable, pinned *verified artifacts*, never unverified .o files.
+      # Kernarium's verifier runs again on every restored kernel.
+      - name: Restore verified ABI29 kernel artifact cache
+        id: kernel_cache
+        if: inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
+        uses: actions/cache/restore@v4
+        with:
+          path: .build/Kernarium/.build/kernel/artifacts/android-6.18-arm64-4k-20261119-6.18.60-ca1
+          key: andarium-abi29-kernel-v1-${{ runner.os }}-${{ runner.arch }}-fbe12ee72d195f0241c4fc24090a98b259026604-ee913342fecf9f7f9836b616f5c605a036da0098-${{ hashFiles('.build/Kernarium/kernel/mainline-6.18/artifacts/accepted-android-4k.env') }}
+
+      # The currently running first successful kernel build has no cache-save
+      # step. Its separate, verified GitHub artifact is still reusable even if
+      # its subsequent Xcode host compile fails. This is an artifact *candidate*
+      # until the original Kernarium verifier accepts it below.
+      - name: Find previously uploaded verified kernel candidate
+        id: prior_kernel
+        if: (inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))) && steps.kernel_cache.outputs.cache-hit != 'true'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 scripts/find_reusable_kernel_artifact.py \
+            --repository "$GITHUB_REPOSITORY" \
+            --branch "$GITHUB_REF_NAME" \
+            --exclude-sha "$GITHUB_SHA" \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Download previously uploaded kernel candidate
+        if: (inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))) && steps.prior_kernel.outputs.found == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ steps.prior_kernel.outputs.run_id }}
+          name: ${{ steps.prior_kernel.outputs.artifact_name }}
+          github-token: ${{ github.token }}
+          path: .build/Kernarium/.build/kernel/artifacts/android-6.18-arm64-4k-20261119-6.18.60-ca1
+
+      - name: Verify restored kernel against pinned Kernarium descriptor
+        if: (inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))) && (steps.kernel_cache.outputs.cache-hit == 'true' || steps.prior_kernel.outputs.found == 'true')
+        shell: bash
+        run: |
+          set -euo pipefail
+          kernel=.build/Kernarium/.build/kernel/artifacts/android-6.18-arm64-4k-20261119-6.18.60-ca1
+          common=.build/Kernarium/kernel/common
+          python3 -B "$common/artifacts/verify-kernel-artifact.py" \
+            --artifact "$PWD/$kernel" --common-root "$PWD/$common" \
+            --abi-metadata "$PWD/$common/abi/identity.env" \
+            --compatible --expected-family android-6.18 \
+            --expected-slice arm64 --expected-release-series 6.18 \
+            --descriptor "$PWD/.build/Kernarium/kernel/mainline-6.18/artifacts/accepted-android-4k.env"
+
+      # Native prefix builders refuse invalid old prefixes and verify cached
+      # GPU/network/storage/zstd products against their upstream contracts.
+      - name: Restore verified iPhoneOS native dependency cache
+        id: native_cache
+        if: inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .build/Kernarium/.build/dependencies/apple-gpu-vulkan-experiment/ios-device-arm64
+            .build/Kernarium/.build/dependencies/ios-device-arm64/network
+            .build/Kernarium/.build/dependencies/ios-storage
+            .build/Kernarium/.build/dependencies/ios-zstd
+          key: andarium-ios27-native-v1-${{ runner.os }}-${{ runner.arch }}-fbe12ee72d195f0241c4fc24090a98b259026604-${{ hashFiles('scripts/patch_kernarium_mesa_cross_endian.py', 'scripts/prepare_kernarium_ios_dependencies.sh', '.build/Kernarium/dependencies/manifest.tsv') }}
+
       - name: Build pinned Kernarium iOS GPU, networking and storage dependencies
         if: inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
         shell: bash
@@ -139,6 +204,18 @@ jobs:
           bash scripts/prepare_kernarium_ios_dependencies.sh "$PWD/.build/Kernarium" 2>&1 |
             tee .build/ci/ios-native-dependencies.log
 
+      - name: Save verified iPhoneOS native dependency cache
+        if: (inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))) && steps.native_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        continue-on-error: true
+        with:
+          path: |
+            .build/Kernarium/.build/dependencies/apple-gpu-vulkan-experiment/ios-device-arm64
+            .build/Kernarium/.build/dependencies/ios-device-arm64/network
+            .build/Kernarium/.build/dependencies/ios-storage
+            .build/Kernarium/.build/dependencies/ios-zstd
+          key: ${{ steps.native_cache.outputs.cache-primary-key }}
+
       - name: Build and verify pinned Android 17 ARM64 4 KiB kernel
         if: inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
         shell: bash
@@ -146,6 +223,14 @@ jobs:
           set -euo pipefail
           bash scripts/prepare_kernarium_4k_kernel.sh "$PWD/.build/Kernarium" 2>&1 |
             tee .build/ci/android-4k-kernel.log
+
+      - name: Save authentically verified ABI29 kernel artifact cache
+        if: (inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))) && steps.kernel_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        continue-on-error: true
+        with:
+          path: .build/Kernarium/.build/kernel/artifacts/android-6.18-arm64-4k-20261119-6.18.60-ca1
+          key: ${{ steps.kernel_cache.outputs.cache-primary-key }}
 
       - name: Upload authentically verified ABI 29 kernel artifact
         if: inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
