@@ -32,7 +32,7 @@ jobs:
           run-id: '44663014989'
           name: andarium-pinned-android17-abi29-4k-kernel-46d252bf087411be9a4dfe2013f321a06bc566c4
           github-token: ${{ github.token }}
-          path: .build/android-kernel
+          path: .build/android-6.18-arm64-4k-20261119-6.18.60-ca1
 
       - name: Check out exact reviewed Kernarium source revision
         shell: bash
@@ -47,7 +47,7 @@ jobs:
         run: |
           set -euo pipefail
           common="$PWD/.build/Kernarium/kernel/common"
-          kernel="$PWD/.build/android-kernel"
+          kernel="$PWD/.build/android-6.18-arm64-4k-20261119-6.18.60-ca1"
           python3 -B "$common/artifacts/verify-kernel-artifact.py" \
             --artifact "$kernel" --common-root "$common" \
             --kernel-metadata "$PWD/.build/Kernarium/kernel/mainline-6.18/patches/metadata.env" \
@@ -64,7 +64,7 @@ jobs:
         run: |
           set -euo pipefail
           name=andarium-kernel-abi29-ca1-20261119
-          tar -C .build -czf ".build/$name.tar.gz" android-kernel
+          tar -C .build -czf ".build/$name.tar.gz" android-6.18-arm64-4k-20261119-6.18.60-ca1
           (cd .build && sha256sum "$name.tar.gz" > "$name.sha256")
           cat ".build/$name.sha256"
 
