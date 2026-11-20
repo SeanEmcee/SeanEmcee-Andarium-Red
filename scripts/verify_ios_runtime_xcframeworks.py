@@ -91,9 +91,11 @@ def main() -> None:
     require(root == kernarium / ".build/kernarium-xcframeworks",
             "framework output is not the pinned Kernarium publication path")
     require(root.is_dir(), "framework root absent")
-    actual = {part.name for part in root.iterdir() if part.name.endswith(".xcframework")}
+    entries = sorted(part.name for part in root.iterdir())
+    actual = {name[:-12] for name in entries if name.endswith(".xcframework")}
     require(set(REQUIRED).issubset(actual),
-            f"published bundle set missing {sorted(set(REQUIRED) - actual)}")
+            f"published bundle set missing {sorted(set(REQUIRED) - actual)}; "
+            f"actual entries: {entries}")
     for name in FRAMEWORKS:
         check_bundle(root, name, True)
     for name in ARCHIVES:
