@@ -270,6 +270,7 @@ jobs:
           MALLOC_ARENA_MAX: '2'
         run: |
           set -euo pipefail
+          mkdir -p .build/ci
           echo "SOONG_MEMORY_POLICY: enable audited in-process host Go runtime caps after verified source checks"
           python3 -B scripts/test_soong_host_runtime_patch.py
           export GIT_CONFIG_NOSYSTEM=1
@@ -280,16 +281,18 @@ jobs:
           # skipped if the hosted runner itself receives a shutdown signal.
           monitor() {
             while true; do
-              echo "ANDROID17_RESOURCE_SAMPLE=$(date -u +%FT%TZ)"
-              free -m || true
-              df -h "$HOME/andarium-red-aosp17" / || true
-              if [[ -r /sys/fs/cgroup/memory.events ]]; then
-                echo "CGROUP_MEMORY_EVENTS"
-                cat /sys/fs/cgroup/memory.events
-              fi
-              if [[ -r /sys/fs/cgroup/memory.current ]]; then
-                echo "CGROUP_MEMORY_BYTES=$(cat /sys/fs/cgroup/memory.current)"
-              fi
+              {
+                echo "ANDROID17_RESOURCE_SAMPLE=$(date -u +%FT%TZ)"
+                free -m || true
+                df -h "$HOME/andarium-red-aosp17" / || true
+                if [[ -r /sys/fs/cgroup/memory.events ]]; then
+                  echo "CGROUP_MEMORY_EVENTS"
+                  cat /sys/fs/cgroup/memory.events
+                fi
+                if [[ -r /sys/fs/cgroup/memory.current ]]; then
+                  echo "CGROUP_MEMORY_BYTES=$(cat /sys/fs/cgroup/memory.current)"
+                fi
+              } | tee -a .build/ci/resource-samples.log
               sleep 45
             done
           }
@@ -297,15 +300,33 @@ jobs:
           monitor_pid=$!
           trap 'kill "$monitor_pid" 2>/dev/null || true' EXIT
           trap 'exit 143' INT TERM
+          set +e
           bash scripts/build_red_android17_proof.sh \
             "$PWD/.build/Kernarium" "$HOME/andarium-red-aosp17" \
             "$PWD/.build/$KERNEL_DIR" "$PWD/.build/red-proof" \
-            "$BUILD_NUMBER" --jobs 1 --diagnostic-userdebug --use-prepared-source
+            "$BUILD_NUMBER" --jobs 1 --diagnostic-userdebug --use-prepared-source 2>&1 | tee .build/ci/andarium-build-complete.log
+          code=${PIPESTATUS[0]}
+          set -e
+          tail -c 16000000 .build/ci/andarium-build-complete.log > .build/ci/andarium-build-last-16mb.log
+          rm -f -- .build/ci/andarium-build-complete.log
+          echo "ANDROID17_COMPILER_EXIT_CODE=$code" | tee -a .build/ci/compile-result.txt
+          if (( code != 0 )); then
+            echo "::error::Android 17 compilation exited $code; inspect andarium-android17-diagnostics artifact."
+            exit "$code"
+          fi
           python3 -B scripts/verify_red_android17_guest.py \
             --proof .build/red-proof --kernarium .build/Kernarium
           python3 .build/Kernarium/Andarium/scripts/stage-system-image.py \
             --release "$PWD/.build/red-proof" --unsigned-proof \
             --output "$PWD/.build/andarium-system"
+      - name: Preserve small, inspectable compiler diagnostics on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andarium-android17-diagnostics-${{ github.run_id }}
+          path: .build/ci/
+          retention-days: 14
+          if-no-files-found: warn
       - name: Upload real verified Android 17 Red proof (never fabricated)
         uses: actions/upload-artifact@v4
         with:

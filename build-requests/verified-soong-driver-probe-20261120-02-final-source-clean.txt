@@ -1,0 +1,1 @@
+Lightweight real pinned Kernarium producer test: original checks first, in-process Go memory instrumentation for Soong, exact source restoration before final pristine verifier. Capture future diagnostics; no full AOSP compilation in this test.
