@@ -14,6 +14,10 @@ source_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
   exit 1
 }
 cd "$kernarium"
+# Patch authors and canonical trees remain pinned by upstream; CI supplies
+# only a stable committer identity for git-am during source materialization.
+export GIT_COMMITTER_NAME='Andarium Red Kernel Host Tools CI'
+export GIT_COMMITTER_EMAIL='andarium-red-kernel-ci@users.noreply.github.com'
 if dependencies/prepare.sh --product kernel-host-tools --verify >/dev/null 2>&1; then
   echo "Reusing verified pinned kernel host-tool source checkouts"
 else
