@@ -186,7 +186,24 @@ jobs:
           set -euo pipefail
           bash scripts/prepare_compressed_aosp_circleci.sh "$HOME/andarium-red-aosp17"
           test "$(stat -f -c %T "$HOME/andarium-red-aosp17")" = btrfs
-      - name: Compile actual LineageOS24 Android17 Red image and verify
+      # Source seed is a small subset of immutable Git object stores, NOT
+      # the full 100+ GiB AOSP source tree. Repo sync and all original source
+      # verifiers must still run. Archive it BEFORE the expensive Soong phase.
+      - name: Restore bounded Git object seed from previously pinned Repo sync
+        id: repo_seed
+        uses: actions/cache/restore@v4
+        with:
+          path: /home/runner/andarium-red-aosp17/.andarium-repo-seed
+          key: andarium-gh-repo-object-seed-v1-fbe12ee72d195f0241c4fc24090a98b259026604-20261115-los24-r28
+      - name: Import cached bare Git objects for normal pinned Repo synchronization
+        if: steps.repo_seed.outputs.cache-hit == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B scripts/prepare_pinned_repo_seed.py restore \
+            --workspace "$HOME/andarium-red-aosp17" \
+            --cache "$HOME/andarium-red-aosp17/.andarium-repo-seed"
+      - name: Synchronize genuine pinned Android 17 sources and apply reviewed patches
         shell: bash
         run: |
           set -euo pipefail
@@ -197,7 +214,57 @@ jobs:
           bash scripts/build_red_android17_proof.sh \
             "$PWD/.build/Kernarium" "$HOME/andarium-red-aosp17" \
             "$PWD/.build/$KERNEL_DIR" "$PWD/.build/red-proof" \
-            "$BUILD_NUMBER" --jobs 2 --diagnostic-userdebug
+            "$BUILD_NUMBER" --jobs 2 --diagnostic-userdebug --source-checkpoint-only
+          echo "ANDROID17_SOURCE_SYNC_AND_PATCH_VERIFIED"
+      - name: Create optional 3 GiB Git object seed after authenticated source sync
+        if: steps.repo_seed.outputs.cache-hit != 'true'
+        id: seed_created
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B scripts/prepare_pinned_repo_seed.py create \
+            --workspace "$HOME/andarium-red-aosp17" \
+            --cache "$HOME/andarium-red-aosp17/.andarium-repo-seed"
+      - name: Persist reusable source Git objects before starting Soong
+        if: steps.repo_seed.outputs.cache-hit != 'true' && steps.seed_created.outcome == 'success'
+        continue-on-error: true
+        uses: actions/cache/save@v4
+        with:
+          path: /home/runner/andarium-red-aosp17/.andarium-repo-seed
+          key: andarium-gh-repo-object-seed-v1-fbe12ee72d195f0241c4fc24090a98b259026604-20261115-los24-r28
+      - name: Compile actual LineageOS24 Android17 Red image and verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          export GIT_CONFIG_NOSYSTEM=1
+          export GIT_CONFIG_GLOBAL="$PWD/.build/clean-gitconfig"
+          export GIT_TERMINAL_PROMPT=0
+          export ANDARIUM_ACCESSIBILITY_CACHE="$PWD/.build/accessibility-cache"
+          # Keep telemetry in the active job log; post-failure steps may be
+          # skipped if the hosted runner itself receives a shutdown signal.
+          monitor() {
+            while true; do
+              echo "ANDROID17_RESOURCE_SAMPLE=$(date -u +%FT%TZ)"
+              free -m || true
+              df -h "$HOME/andarium-red-aosp17" / || true
+              if [[ -r /sys/fs/cgroup/memory.events ]]; then
+                echo "CGROUP_MEMORY_EVENTS"
+                cat /sys/fs/cgroup/memory.events
+              fi
+              if [[ -r /sys/fs/cgroup/memory.current ]]; then
+                echo "CGROUP_MEMORY_BYTES=$(cat /sys/fs/cgroup/memory.current)"
+              fi
+              sleep 45
+            done
+          }
+          monitor &
+          monitor_pid=$!
+          trap 'kill "$monitor_pid" 2>/dev/null || true' EXIT INT TERM
+          bash scripts/build_red_android17_proof.sh \
+            "$PWD/.build/Kernarium" "$HOME/andarium-red-aosp17" \
+            "$PWD/.build/$KERNEL_DIR" "$PWD/.build/red-proof" \
+            "$BUILD_NUMBER" --jobs 2 --diagnostic-userdebug --use-prepared-source
           python3 -B scripts/verify_red_android17_guest.py \
             --proof .build/red-proof --kernarium .build/Kernarium
           python3 .build/Kernarium/Andarium/scripts/stage-system-image.py \

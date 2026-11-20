@@ -58,3 +58,30 @@ No full guest build is triggered before the capacity probe passes.
 
 This experiment can still fail from insufficient storage or memory;
 do not claim a working image or successful IPA until its real artifacts pass.
+
+
+## Source-sync checkpoints after GitHub runner shutdown at Soong bootstrap
+
+Run 44699590700 failed after a host shutdown signal, not a demonstrated
+Soong compiler error. The Soong 99% display was only its bootstrap
+296-step stage. Previously only Kernarium, the ABI29 kernel and the three
+accessibility checkouts were cached; all AOSP Repo and Soong state was lost.
+
+The hosted job now has an explicit source-preparation checkpoint **before**
+the long Soong compilation. The original Kernarium accessibility, Mesa and
+AOSP patch verifiers must all pass before it proceeds. An optional cache
+captures up to 3 GiB apparent size of *selected bare Git object stores*,
+copy-on-write within the compressed Btrfs workspace. Next run restores
+those objects before the ordinary pinned Repo sync, which must still fetch
+and verify everything missing. This does not cache 100+ GiB AOSP worktree
+or the Soong intermediates, so it cannot guarantee a dramatic speedup.
+
+The cache key is tied to the reviewed Kernarium SHA and pinned LineageOS 24
+tag. GitHub's standard 10 GB total free repository cache allowance is
+respected; exceeding it requires paid cache storage. Full AOSP caching
+and incremental Soong compilations require a persistent adequately sized
+runner rather than a disposable free hosted VM.
+
+The hosted build also prints cgroup memory events, memory pressure and
+disk usage every 45 seconds during Soong so an abrupt runner shutdown
+has pre-stop diagnostics even when an after-failure action cannot execute.

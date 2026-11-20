@@ -10,7 +10,7 @@ usage() {
   cat <<'EOF'
 Usage: bash scripts/build_red_android17_proof.sh \
   /ABS/Kernarium /ABS/AOSP17 /ABS/KERNEL_ARTIFACT /ABS/PROOF_OUT BUILD_NUMBER \
-  [--jobs N] [--diagnostic-userdebug]
+  [--jobs N] [--diagnostic-userdebug] [--source-checkpoint-only | --use-prepared-source]
 
 AOSP17 must be a writable, case-sensitive x86_64 Linux Repo workspace.
 The script prepares pinned LineageOS 24 Android 17 source, applies the
@@ -19,6 +19,9 @@ actual GPT system disk, and packages a verifiable UNSIGNED development proof.
 
 --diagnostic-userdebug requests an AOSP test-key userdebug image with debug su.
 It is NOT Magisk-managed root, not a signed release and not a production build.
+--source-checkpoint-only validates and prepares pinned Android sources without
+compiling. --use-prepared-source verifies that same job's patched source
+before compilation, without repeating Repo sync. Never skip the verifiers.
 The original user build remains the default. Never reuse output from another
 build variant. All outputs must be on a sufficiently provisioned builder.
 EOF
@@ -28,15 +31,23 @@ kernarium="$1"; aosp="$2"; artifact="$3"; proof="$4"; number="$5"
 shift 5
 jobs=4
 diagnostic=0
+source_checkpoint_only=0
+use_prepared_source=0
 while (( $# )); do
   case "$1" in
     --jobs)
       if (( $# < 2 )); then echo "ERROR: --jobs needs an integer" >&2; exit 2; fi
       jobs="$2"; shift 2 ;;
     --diagnostic-userdebug) diagnostic=1; shift ;;
+    --source-checkpoint-only) source_checkpoint_only=1; shift ;;
+    --use-prepared-source) use_prepared_source=1; shift ;;
     *) echo "ERROR: unrecognized option $1" >&2; usage >&2; exit 2 ;;
   esac
 done
+if (( source_checkpoint_only && use_prepared_source )); then
+  echo "ERROR: source checkpoint and reuse modes are mutually exclusive" >&2
+  exit 2
+fi
 if [[ ! "$jobs" =~ ^[1-9][0-9]*$ || ! "$number" =~ ^[1-9][0-9]{0,9}$ ]]; then
   echo "ERROR: jobs and build number must be positive decimal integers" >&2
   exit 2
@@ -91,8 +102,10 @@ variant_args=()
 if (( diagnostic )); then variant_args=(--diagnostic-userdebug); fi
 python3 -B "$repo_source/integrate_andarium.py" \
   --kernarium "$kernarium" --source "$repo_source" "${variant_args[@]}" --dry-run
-python3 -B "$repo_source/integrate_andarium.py" \
-  --kernarium "$kernarium" --source "$repo_source" "${variant_args[@]}"
+if (( ! use_prepared_source )); then
+  python3 -B "$repo_source/integrate_andarium.py" \
+    --kernarium "$kernarium" --source "$repo_source" "${variant_args[@]}"
+fi
 
 # Repo's first-time init prompts indefinitely without an identity on CI.
 # Require a configured noninteractive identity, and use the SAME identity for
@@ -110,7 +123,7 @@ fi
 
 # The vendor's preparer requires an initialized Repo workspace; initialize
 # only its pinned, reviewed public LineageOS manifest if absent.
-if [[ ! -d "$aosp/.repo" ]]; then
+if [[ ! -d "$aosp/.repo/manifests" ]]; then
   (
     cd "$aosp"
     repo init -u https://github.com/LineageOS/android.git \
@@ -142,8 +155,23 @@ if [[ -n "${ANDARIUM_ACCESSIBILITY_CACHE:-}" ]]; then
 fi
 
 cd "$kernarium"
-android/lineage-24/build/prepare-sources.sh --aosp-source "$aosp" --jobs "$jobs"
-android/lineage-24/build/apply-aosp-patches.sh --aosp-source "$aosp"
+if (( ! use_prepared_source )); then
+  android/lineage-24/build/prepare-sources.sh --aosp-source "$aosp" --jobs "$jobs"
+  android/lineage-24/build/apply-aosp-patches.sh --aosp-source "$aosp"
+fi
+# A previously prepared source tree may only skip synchronization inside the
+# same job once all original pinned source and patch verifiers succeed.
+python3 -B android/lineage-24/tools/verify-aosp-patches.py \
+  --android-root "$kernarium/android/lineage-24" \
+  --aosp-source "$aosp" --expect final
+python3 -B android/lineage-24/tools/verify-mesa-venus-source.py \
+  --android-root "$kernarium/android/lineage-24" --aosp-source "$aosp"
+python3 -B android/lineage-24/tools/verify-accessibility-source.py \
+  --android-root "$kernarium/android/lineage-24" --aosp-source "$aosp"
+if (( source_checkpoint_only )); then
+  echo "ANDARIUM_ANDROID17_SOURCE_CHECKPOINT_VERIFIED=$aosp"
+  exit 0
+fi
 
 variant=user
 if (( diagnostic )); then variant=userdebug; fi
