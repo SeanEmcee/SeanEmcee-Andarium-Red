@@ -61,7 +61,11 @@ fi
 git -C "$staging" update-ref refs/heads/uml-pin "$expected_commit"
 git -C "$staging" fsck --connectivity-only --no-reflogs
 [[ "$(git -C "$staging" remote get-url origin)" == "$expected_repo" ]]
-tree="$(git -C "$staging" rev-parse 'HEAD^{tree}' 2>/dev/null || git -C "$staging" rev-parse "$expected_commit^{tree}")"
+tree="$(git -C "$staging" rev-parse --verify "${expected_commit}^{tree}")"
+if [[ ! "$tree" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "ERROR: Gawk mirror did not supply a valid pinned source tree" >&2
+  exit 1
+fi
 echo "GAWK_FALLBACK_PINNED_COMMIT=$actual"
 echo "GAWK_FALLBACK_PINNED_TREE=$tree"
 echo "GAWK_FALLBACK_CANONICAL_REPOSITORY=$expected_repo"
