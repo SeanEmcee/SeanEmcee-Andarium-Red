@@ -87,3 +87,23 @@ disk usage every 45 seconds during Soong so an abrupt runner shutdown
 has pre-stop diagnostics even when an after-failure action cannot execute.
 
 The source split now has an exact same-revision/variant checkpoint and skips duplicate overlay or accessibility restoration on continuation. A lightweight probe validates Bash and the Git seed parser before another full build.
+
+
+### Soong host memory pressure
+
+Run 44709692727 reached Android.bp analysis while approximately
+14.9/15.7 GiB RAM and 3.0/3.0 GiB swap were used, with 14 GiB
+Btrfs and 17 GiB host disk free. A runner termination signal before
+Soong is not by itself proof that Linux's OOM killer was responsible.
+
+The hosted build will use --jobs 1, GOMEMLIMIT=9GiB, GOGC=50,
+GOMAXPROCS=2, MALLOC_ARENA_MAX=2, and up to 6 GiB more swap, only
+after GitHub successfully saves its source seed. A disposable test
+first checks whether swapon supports an additional 1 GiB file, then
+removes it. Extra swap is refused unless it leaves 8 GiB host free.
+This is an experiment, not a guarantee: the remaining Android build
+can exceed the 110 GiB compressed filesystem or the 16 GiB RAM host.
+For reliability use a persistent runner with >=32 GiB RAM and
+>=250 GiB SSD, not the small public Ubuntu VM.
+No previously saved kernel, Kernarium, accessibility or Git-object
+cache is deleted by this change.

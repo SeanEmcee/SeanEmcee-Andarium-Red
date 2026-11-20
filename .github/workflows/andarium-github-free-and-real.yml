@@ -50,8 +50,14 @@ jobs:
           bash -n scripts/build_red_android17_proof.sh
           bash -n scripts/prepare_github_hosted_disk.sh
           bash -n scripts/prepare_compressed_aosp_circleci.sh
+          bash -n scripts/provision_android17_host_swap.sh
           python3 -B -m py_compile scripts/prepare_pinned_repo_seed.py
           python3 -B scripts/test_android17_source_checkpoint.py
+      - name: Probe additional swap compatibility on disposable Ubuntu runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/provision_android17_host_swap.sh --probe
       - name: Reclaim unrelated preinstalled toolchains on disposable free runner
         shell: bash
         run: bash scripts/prepare_github_hosted_disk.sh
@@ -248,10 +254,21 @@ jobs:
         with:
           path: /home/runner/andarium-red-aosp17/.andarium-repo-seed
           key: andarium-gh-repo-object-seed-v1-fbe12ee72d195f0241c4fc24090a98b259026604-20261115-los24-r28
-      - name: Compile actual LineageOS24 Android17 Red image and verify
+      - name: Provision checked extra swap before Soong bootstrap
         shell: bash
         run: |
           set -euo pipefail
+          bash scripts/provision_android17_host_swap.sh 6
+      - name: Compile actual LineageOS24 Android17 Red image and verify
+        shell: bash
+        env:
+          GOMEMLIMIT: 9GiB
+          GOGC: '50'
+          GOMAXPROCS: '2'
+          MALLOC_ARENA_MAX: '2'
+        run: |
+          set -euo pipefail
+          echo "SOONG_MEMORY_POLICY: GOMEMLIMIT=$GOMEMLIMIT GOGC=$GOGC GOMAXPROCS=$GOMAXPROCS"
           export GIT_CONFIG_NOSYSTEM=1
           export GIT_CONFIG_GLOBAL="$PWD/.build/clean-gitconfig"
           export GIT_TERMINAL_PROMPT=0
@@ -279,7 +296,7 @@ jobs:
           bash scripts/build_red_android17_proof.sh \
             "$PWD/.build/Kernarium" "$HOME/andarium-red-aosp17" \
             "$PWD/.build/$KERNEL_DIR" "$PWD/.build/red-proof" \
-            "$BUILD_NUMBER" --jobs 2 --diagnostic-userdebug --use-prepared-source
+            "$BUILD_NUMBER" --jobs 1 --diagnostic-userdebug --use-prepared-source
           python3 -B scripts/verify_red_android17_guest.py \
             --proof .build/red-proof --kernarium .build/Kernarium
           python3 .build/Kernarium/Andarium/scripts/stage-system-image.py \

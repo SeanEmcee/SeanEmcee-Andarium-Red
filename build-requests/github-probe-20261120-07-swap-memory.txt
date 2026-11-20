@@ -1,0 +1,1 @@
+Test whether GitHub disposable Ubuntu runner supports extra swap and validate the low-memory compile configuration. Do not run the full Android17 build in this smoke test.
