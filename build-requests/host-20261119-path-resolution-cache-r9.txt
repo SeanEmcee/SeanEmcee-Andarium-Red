@@ -1,0 +1,12 @@
+phase=host-unsigned
+scope=SeanEmcee/SeanEmcee-Andarium-Red:feature/andd-memory-tuning ONLY
+failed_run=44654413055
+root_cause=Kernel preparation changed working directory to Kernarium then resolved relative BASH_SOURCE against wrong location
+fix_commit=be07121cccc1ff2765ccc7fa9eb595d27f5ec97f
+repair=Capture Andarium Red script root as absolute before cd, invoke verified pinned host-tool preparation via that root
+reuse_verified_native_cache=true
+reuse_verified_kernel_host_tools_cache=true
+kernel_artifact=Build and publish original pinned 6.18.60 ABI29 ARM64 4KiB artifact, with Kernarium descriptor/provenance/ELF/config/ABI verification intact
+compile_host=unsigned iPhoneOS Xcode 27 if kernel verification succeeds
+guest_image=Do not substitute an unverified Android image or claim an IPA
+request=one host-unsigned run
