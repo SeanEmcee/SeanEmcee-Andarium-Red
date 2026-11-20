@@ -296,24 +296,57 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Compile the actual modified Andarium Red iPhoneOS host
+      # The actual 4 KiB ABI29 kernel, native dependencies, and host tools
+      # are cached separately. Publish the iPhoneOS Android runtime itself
+      # before requiring an x86_64 Linux-built Red guest image.
+      - name: Restore source-keyed iPhoneOS Android runtime XCFramework cache
+        id: ios_runtime_cache
         if: inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
+        uses: actions/cache/restore@v4
+        with:
+          path: .build/Kernarium/.build/kernarium-xcframeworks
+          key: andarium-ios27-runtime-v1-${{ runner.os }}-${{ runner.arch }}-fbe12ee72d195f0241c4fc24090a98b259026604-ee913342fecf9f7f9836b616f5c605a036da0098-${{ hashFiles('integrate_andarium.py', 'host/**', 'guest_clipboard/**', 'launcher_src/**', 'red_runtime_overlay.py', 'host_firstboot.py', 'install_source_overlay.py', 'tools/**', 'scripts/first_build.sh', 'scripts/verify_ios_runtime_xcframeworks.py') }}
+
+      - name: Compile or verify iPhoneOS Android runtime without fabricating guest image
+        if: inputs.phase == 'host-unsigned' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
         shell: bash
         env:
-          BUILD_PHASE: ${{ inputs.phase }}
+          ANDARIUM_REUSE_VERIFIED_RUNTIME: ${{ steps.ios_runtime_cache.outputs.cache-hit == 'true' && '1' || '0' }}
         run: |
           set -euo pipefail
-          if [[ "$BUILD_PHASE" == red-ipa ]]; then
-            # Unlike host-unsigned, this mode MUST embed the verified compiled
-            # Red guest. No substitution with upstream's accepted guest.
-            bash scripts/first_build.sh "$PWD/.build/Kernarium" \
-              --build --with-apps --guest-proof "$PWD/.build/red-proof" 2>&1 |
-              tee .build/ci/host-xcodebuild.log
-          else
-            echo "Compiler smoke only: upstream accepted guest is NOT modified Red Android."
-            bash scripts/first_build.sh "$PWD/.build/Kernarium" --build 2>&1 |
-              tee .build/ci/host-xcodebuild.log
-          fi
+          bash scripts/first_build.sh "$PWD/.build/Kernarium" --build --runtime-only 2>&1 |
+            tee .build/ci/host-runtime-xcframeworks.log
+
+      # The full app is only attempted if a real modified Android17 guest
+      # proof was downloaded and independently verified earlier.
+      - name: Compile actual modified Andarium Red iPhoneOS host with verified guest
+        if: inputs.phase == 'red-ipa'
+        shell: bash
+        env:
+          ANDARIUM_REUSE_VERIFIED_RUNTIME: ${{ steps.ios_runtime_cache.outputs.cache-hit == 'true' && '1' || '0' }}
+        run: |
+          set -euo pipefail
+          bash scripts/first_build.sh "$PWD/.build/Kernarium" \
+            --build --with-apps --guest-proof "$PWD/.build/red-proof" 2>&1 |
+            tee .build/ci/host-xcodebuild.log
+
+      - name: Save validated iPhoneOS Android runtime XCFramework cache
+        if: (inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))) && steps.ios_runtime_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        continue-on-error: true
+        with:
+          path: .build/Kernarium/.build/kernarium-xcframeworks
+          key: ${{ steps.ios_runtime_cache.outputs.cache-primary-key }}
+
+      - name: Upload checked iPhoneOS runtime XCFrameworks for independent inspection
+        if: inputs.phase == 'host-unsigned' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
+        uses: actions/upload-artifact@v4
+        with:
+          name: andarium-red-ios27-android-runtime-xcframeworks-${{ github.sha }}
+          path: .build/Kernarium/.build/kernarium-xcframeworks/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
 
       - name: Package verified modified Andarium Red Android 17 full-host IPA
         if: inputs.phase == 'red-ipa'
