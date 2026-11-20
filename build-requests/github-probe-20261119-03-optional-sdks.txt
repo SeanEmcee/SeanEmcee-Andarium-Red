@@ -1,0 +1,1 @@
+Run third free GitHub-hosted disk probe, removing optional preinstalled SDKs and Docker layers only. Do not start Android build unless measurable free capacity >=122 GiB and required tools survive.
