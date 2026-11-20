@@ -55,16 +55,19 @@ if [[ ! -f "$venv" ]]; then
 fi
 # shellcheck source=/dev/null
 source "$venv"
-brew install llvm make
+# Homebrew LLVM 23 ships lld separately; selecting LLVM's removed ld.lld
+# path is a deterministic failure on the Xcode 27 Golden Gate runner.
+brew install llvm lld make
 llvm="$(brew --prefix llvm)/bin"
+lld="$(brew --prefix lld)/bin"
 gmake="$(brew --prefix make)/bin/gmake"
-for tool in "$llvm/clang" "$llvm/ld.lld" "$llvm/llvm-objcopy" "$gmake"; do
+for tool in "$llvm/clang" "$lld/ld.lld" "$llvm/llvm-objcopy" "$gmake"; do
   [[ -x "$tool" ]] || { echo "ERROR: kernel tool unavailable: $tool" >&2; exit 1; }
 done
-export PATH="$llvm:$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$PATH"
+export PATH="$lld:$llvm:$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$PATH"
 export UML_KERNEL_CC="$llvm/clang"
 export UML_KERNEL_HOST_CC="$llvm/clang"
-export UML_KERNEL_LD="$llvm/ld.lld"
+export UML_KERNEL_LD="$lld/ld.lld"
 export UML_KERNEL_MAKE="$gmake"
 export UML_KERNEL_JOBS=4
 export UML_KERNEL_HOST_TOOLS_JOBS=4
