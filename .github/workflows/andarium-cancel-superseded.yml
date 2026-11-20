@@ -1,0 +1,29 @@
+name: Andarium Red - cancel only obsolete memory build
+on:
+  push:
+    branches: [feature/andd-memory-tuning]
+    paths:
+      - 'build-requests/cancel-superseded-*.txt'
+permissions:
+  actions: write
+  contents: read
+jobs:
+  cancel-obsolete:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Cancel only superseded run #44762154864
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          obsolete=44762154864
+          state="$(gh api "repos/$GH_REPO/actions/runs/$obsolete" --jq .status)"
+          if [[ "$state" == completed ]]; then
+            echo "Run #$obsolete already completed; nothing to cancel" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          gh api -X POST "repos/$GH_REPO/actions/runs/$obsolete/cancel"
+          echo "Requested cancellation of superseded run #$obsolete only" >> "$GITHUB_STEP_SUMMARY"

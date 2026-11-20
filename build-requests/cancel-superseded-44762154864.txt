@@ -1,0 +1,1 @@
+Cancel ONLY old Andarium Red build run 44762154864 because original vendor checks would reject premature host-side Soong patch. Preserve all saved caches. Next full build uses validated producer-ordering fix.
