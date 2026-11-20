@@ -1,0 +1,3 @@
+CircleCI Android 17 proof build trigger.
+Reason: GITHUB_TOKEN added to CircleCI project settings; retry verified kernel artifact download.
+The proof must be compiled and verified; no fake guest image or IPA.
