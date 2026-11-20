@@ -94,6 +94,20 @@ python3 -B "$repo_source/integrate_andarium.py" \
 python3 -B "$repo_source/integrate_andarium.py" \
   --kernarium "$kernarium" --source "$repo_source" "${variant_args[@]}"
 
+# Repo's first-time init prompts indefinitely without an identity on CI.
+# Require a configured noninteractive identity, and use the SAME identity for
+# the vendor preparer's second repo init. Never supply an answer to the
+# interactive confirmation prompt or weaken the pinned manifest checks.
+if [[ -n "${CI:-}" || -n "${CIRCLECI:-}" ]]; then
+  ci_git_name="$(git config --global --get user.name || true)"
+  ci_git_email="$(git config --global --get user.email || true)"
+  if [[ -z "$ci_git_name" || -z "$ci_git_email" ]]; then
+    echo "ERROR: Android Repo init requires CI git user.name and user.email to avoid interactive prompts" >&2
+    exit 1
+  fi
+  export GIT_TERMINAL_PROMPT=0
+fi
+
 # The vendor's preparer requires an initialized Repo workspace; initialize
 # only its pinned, reviewed public LineageOS manifest if absent.
 if [[ ! -d "$aosp/.repo" ]]; then
