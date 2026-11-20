@@ -1,0 +1,1 @@
+Re-run source-object cache export with safe internal Git metadata symlinks allowed only when resolving within the already verified cache root. Refuse escaping or broken symlinks. Do not run Android compilation.

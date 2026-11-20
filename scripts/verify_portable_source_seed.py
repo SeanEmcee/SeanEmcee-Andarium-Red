@@ -42,12 +42,31 @@ for item in paths:
     cp = subprocess.run(["git", "-C", str(obj), "rev-parse", "--is-bare-repository"], capture_output=True, text=True)
     if cp.returncode != 0 or cp.stdout.strip() != "true":
         fail("not a bare Git repo")
+    cache_root = root.resolve(strict=True)
+    def validate_link(link):
+        try:
+            resolved = link.resolve(strict=True)
+        except (OSError, RuntimeError) as exc:
+            fail("broken or recursive Git metadata link " + str(link) + ": " + str(exc))
+        if not resolved.is_relative_to(cache_root):
+            fail("Git metadata link escapes source seed: " + str(link) + " -> " + str(resolved))
+        return resolved
     for folder, dirs, files in os.walk(obj, followlinks=False):
-        dirs[:] = [d for d in dirs if not (Path(folder)/d).is_symlink()]
+        kept = []
+        for name in dirs:
+            directory = Path(folder) / name
+            if directory.is_symlink():
+                if not validate_link(directory).is_dir():
+                    fail("symlinked Git directory target is not a directory")
+            else:
+                kept.append(name)
+        dirs[:] = kept
         for filename in files:
-            file = Path(folder)/filename
+            file = Path(folder) / filename
             if file.is_symlink():
-                fail("symlink inside bare repo")
+                if not validate_link(file).is_file():
+                    fail("symlinked Git file target is not a file")
+                continue
             actual += file.stat().st_size
             if actual > MAX_BYTES:
                 fail("object data exceeds 3GiB budget")
