@@ -1,0 +1,1 @@
+Retry exactly one genuine Andarium Red Android17 GitHub-hosted free build with verified additional swap support, --jobs 1, independently verified pinned source, saved kernel/Kernarium/accessibility/Git-object caches and 6GiB checked swap after source sync. Record Soong memory/disk telemetry. No Nexaris. No fake ROM artifacts.
