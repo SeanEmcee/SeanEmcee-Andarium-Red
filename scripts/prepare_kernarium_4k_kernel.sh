@@ -72,22 +72,43 @@ export UML_KERNEL_MAKE="$gmake"
 export UML_KERNEL_JOBS=4
 export UML_KERNEL_HOST_TOOLS_JOBS=4
 
-# GitHub's macOS checkout is not guaranteed case sensitive. The actual
-# Linux source (not an arbitrary path) belongs on a sparse APFSX volume.
+# GitHub's macOS workspace may be case insensitive. Use a real
+# case-sensitive APFS disk image for the upstream Linux kernel source.
+# macOS 27's hdiutil accepts the documented 'Case-sensitive APFS' filesystem
+# name, not the older APFSX alias. Do not suppress hdiutil diagnostics.
 image="$kernarium/.build/ci-kernel-source.sparseimage"
 mount="$kernarium/.build/ci-kernel-source"
 mkdir -p "$mount"
-hdiutil create -quiet -size 35g -type SPARSE -fs APFSX -volname AndariumRedKernel "$image"
+echo "KERNEL_VOLUME_STAGE: creating case-sensitive APFS sparse image"
+if ! hdiutil create -size 35g -type SPARSE -fs 'Case-sensitive APFS' \
+    -volname AndariumRedKernel "$image"; then
+  echo "ERROR: failed creating case-sensitive APFS disk image (see hdiutil output above)" >&2
+  exit 1
+fi
 attached=0
 cleanup() {
   if (( attached )); then
-    hdiutil detach "$mount" -quiet || echo "WARNING: temporary kernel source volume did not detach" >&2
+    hdiutil detach "$mount" || echo "WARNING: temporary kernel source volume did not detach" >&2
   fi
 }
 trap cleanup EXIT
-hdiutil attach -quiet -nobrowse -mountpoint "$mount" "$image"
+echo "KERNEL_VOLUME_STAGE: mounting case-sensitive APFS image"
+if ! hdiutil attach -nobrowse -mountpoint "$mount" "$image"; then
+  echo "ERROR: failed attaching case-sensitive APFS image (see hdiutil output above)" >&2
+  exit 1
+fi
 attached=1
+echo "KERNEL_VOLUME_STAGE: verifying filesystem is case sensitive"
+testfile="$mount/.andarium-red-caseprobe-$"
+printf '%s\n' "probe" > "$testfile"
+if [[ -e "$mount/.ANDARIUM-RED-CASEPROBE-$" ]]; then
+  rm -f "$testfile"
+  echo "ERROR: kernel source mount is not case sensitive" >&2
+  exit 1
+fi
+rm -f "$testfile"
 printf 'UML_KERNEL_SOURCE_DIR=%s/linux\n' "$mount" > "$line/source-location.conf"
+echo "KERNEL_VOLUME_STAGE: filesystem verified; preparing Linux source"
 
 # Fetch the exact upstream stable revision and replay only the pinned
 # Kernarium patches; the canonical final source tree is verified twice.
