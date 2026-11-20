@@ -1,0 +1,1 @@
+Test byte-identical upstream Kernarium build producer and ensure source-integrity verifiers run before host-only Soong Go runtime memory changes. Do not compile full Android in probe.

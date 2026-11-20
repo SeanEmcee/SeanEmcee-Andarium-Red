@@ -1,0 +1,25 @@
+name: Andarium Red - verify pinned producer before Soong host memory
+on:
+  push:
+    branches: [feature/andd-memory-tuning]
+    paths:
+      - 'build-requests/verified-soong-driver-probe-*.txt'
+permissions:
+  contents: read
+jobs:
+  verify-producer-integrity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Run exact upstream verifier ordering and reversible Go host patch tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B -m py_compile scripts/create_verified_soong_build_driver.py
+          python3 -B scripts/test_verified_soong_driver.py
+          python3 -B scripts/test_soong_host_runtime_patch.py
+          bash -n scripts/build_red_android17_proof.sh
+          echo 'PASS: original vendor verifiers precede host-only Soong memory changes' >> "$GITHUB_STEP_SUMMARY"

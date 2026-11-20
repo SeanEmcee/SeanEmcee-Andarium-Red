@@ -209,18 +209,21 @@ fi
 variant=user
 if (( diagnostic )); then variant=userdebug; fi
 out="$aosp/out/andarium-red-$variant"
-# Original pinned Repo, patches, Mesa and accessibility checks ran above.
-# This explicit build-host-only change does not modify the Android guest.
-python3 -B "$repo_source/scripts/patch_soong_host_runtime.py" apply \
-  --workspace "$aosp" --audit "$repo_source/.build/ci/soong-memory-audit.txt"
-restore_host_soong() {
-  python3 -B "$repo_source/scripts/patch_soong_host_runtime.py" restore --workspace "$aosp" || true
-}
-trap restore_host_soong EXIT
-android/lineage-24/build/build-aosp.sh \
+# The original vendor producer runs additional pinned-source integrity
+# checks. Keep it pristine. Derive a temporary sibling containing a single
+# host-only instrumentation call AFTER those original checks pass.
+vendor="$kernarium/android/lineage-24/build/build-aosp.sh"
+derived="$kernarium/android/lineage-24/build/build-aosp.andarium-host-ci.sh"
+python3 -B "$repo_source/scripts/create_verified_soong_build_driver.py" \
+  --original "$vendor" --derived "$derived" \
+  --audit "$repo_source/.build/ci/derived-build-producer-audit.txt"
+export ANDARIUM_RED_MEMORY_PATCH_SCRIPT="$repo_source/scripts/patch_soong_host_runtime.py"
+export ANDARIUM_RED_MEMORY_AUDIT="$repo_source/.build/ci/soong-memory-audit.txt"
+trap 'rm -f -- "$derived"' EXIT
+"$derived" \
   --aosp-source "$aosp" --out "$out" --kernel-artifact "$artifact" \
   --build-number "$number" --jobs "$jobs"
-restore_host_soong
+rm -f -- "$derived"
 trap - EXIT
 
 # The reviewed Soong producer emits one canonical target-files archive.
