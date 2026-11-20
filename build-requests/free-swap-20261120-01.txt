@@ -1,0 +1,1 @@
+Test GitHub free hosted x64 temporary extra swap in an independent workflow, not serialized behind the earlier Soong runner shutdown. No Android compilation.

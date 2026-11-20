@@ -1,0 +1,32 @@
+name: Andarium Red - independent free swap compatibility test
+on:
+  push:
+    branches: [feature/andd-memory-tuning]
+    paths:
+      - 'build-requests/free-swap-*.txt'
+permissions:
+  contents: read
+jobs:
+  swap-compatibility:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify swap script safety
+        run: |
+          set -euo pipefail
+          bash -n scripts/provision_android17_host_swap.sh
+          grep -Fq 'RUNNER_ENVIRONMENT' scripts/provision_android17_host_swap.sh
+          grep -Fq '8 GiB host disk reserve' scripts/provision_android17_host_swap.sh
+      - name: Verify extra swap really works on GitHub free runner
+        run: |
+          set -euo pipefail
+          bash scripts/provision_android17_host_swap.sh --probe
+          echo 'Verified an additional 1 GiB disposable swap file could be activated and removed' >> "$GITHUB_STEP_SUMMARY"
+      - name: Report machine memory and disk
+        run: |
+          free -h
+          df -h / /mnt
+          swapon --show
