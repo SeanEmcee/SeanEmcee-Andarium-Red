@@ -1,0 +1,1 @@
+Run a single authentic modified Andarium Red Android17 build on public GitHub-hosted Ubuntu. Require exact pinned source/kernel verifiers, minimum 104 GiB fully allocated Btrfs image plus 16 GiB host reserve; re-use authenticated kernels/accessibility caches; no fake IPA. CircleCI should stop immediately on this GitHub-only request.

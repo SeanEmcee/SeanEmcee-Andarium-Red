@@ -84,6 +84,7 @@ jobs:
       KERNARIUM_SHA: fbe12ee72d195f0241c4fc24090a98b259026604
       KERNEL_DIR: android-6.18-arm64-4k-20261119-6.18.60-ca1
       BUILD_NUMBER: '1001'
+      ANDARIUM_COMPRESSED_HOST_RESERVE_GIB: '16'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -95,8 +96,8 @@ jobs:
           bash scripts/prepare_github_hosted_disk.sh
           test "$(uname -m)" = x86_64
           free_kib="$(df -Pk / | awk 'END{print $4}')"
-          [[ "$free_kib" =~ ^[0-9]+$ ]] && (( free_kib >= 127926272 )) || {
-            echo 'ERROR: Not enough free capacity for compressed pinned AOSP17 and reserve' >&2
+          [[ "$free_kib" =~ ^[0-9]+$ ]] && (( free_kib >= 125829120 )) || {
+            echo 'ERROR: Need >=120 GiB free for 104 GiB compressed AOSP and 16 GiB host reserve' >&2
             exit 1
           }
       - name: Install Linux Repo and Android 17 build dependencies

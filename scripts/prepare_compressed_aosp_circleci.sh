@@ -18,7 +18,9 @@ command -v mountpoint >/dev/null || exit 1
 
 # Fully allocated image prevents the backing filesystem running out of space
 # underneath a larger sparse loop device (potential Btrfs metadata corruption).
-# Reserve at least 18 GiB for host files, tools and proof artifacts.
+# Default reserve 18 GiB for host files, tools and proof artifacts.
+# On a disposable GitHub-hosted runner, 16 GiB may be explicitly selected.
+# Never accept less than 16 GiB or a fractional/malformed override.
 backing="${ANDARIUM_COMPRESSED_IMAGE:-$HOME/andarium-red-aosp17-compressed.btrfs}"
 [[ "$backing" = /* ]] || { echo 'ERROR: backing image must be an absolute path' >&2; exit 2; }
 [[ ! -e "$backing" && ! -L "$backing" ]] || {
@@ -29,7 +31,13 @@ mountpoint -q "$workspace" && { echo 'ERROR: workspace is already a mount point'
 
 available_kib="$(df -Pk "$(dirname "$backing")" | awk 'END{print $4}')"
 [[ "$available_kib" =~ ^[0-9]+$ ]] || exit 1
-reserve_kib=$((18 * 1024 * 1024))
+reserve_gib="${ANDARIUM_COMPRESSED_HOST_RESERVE_GIB:-18}"
+if [[ ! "$reserve_gib" =~ ^(1[6-9]|2[0-9]|3[0-2])$ ]]; then
+  echo 'ERROR: host disk reserve must be a whole 16–32 GiB' >&2
+  exit 2
+fi
+reserve_kib=$((reserve_gib * 1024 * 1024))
+echo "ANDARIUM_COMPRESSED_HOST_RESERVE_GIB=$reserve_gib"
 min_image_kib=$((104 * 1024 * 1024))
 if ((available_kib < min_image_kib + reserve_kib)); then
   echo "ERROR: requires at least $((min_image_kib / 1024 / 1024)) GiB for image and $((reserve_kib / 1024 / 1024)) GiB host reserve, has $((available_kib / 1024 / 1024)) GiB" >&2

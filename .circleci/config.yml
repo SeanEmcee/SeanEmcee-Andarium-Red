@@ -16,6 +16,17 @@ jobs:
       BUILD_NUMBER: "1001"
     steps:
       - checkout
+      # GitHub hosted probes and AOSP requests have their own runner and are
+      # intentionally NOT duplicate CircleCI Android compilation requests.
+      - run:
+          name: Skip GitHub-only runner requests on CircleCI
+          command: |
+            set -euo pipefail
+            subject="$(git log -1 --pretty=%s)"
+            if [[ "$subject" == "[github-hosted]"* || "$subject" == "[github-probe]"* ]]; then
+              echo "GitHub-only build request; halting duplicate CircleCI job."
+              circleci-agent step halt
+            fi
       - run:
           name: Require exact source branch, x86_64 and adequate workspace
           command: |
