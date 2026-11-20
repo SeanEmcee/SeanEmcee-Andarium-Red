@@ -1,0 +1,1 @@
+Test that genuine Soong Go runtime GOMEMLIMIT survives the generated Ninja env -i invocation on a disposable GitHub free runner, without compiling Android. Restore the original host utility after the test.

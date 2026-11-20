@@ -1,0 +1,27 @@
+name: Andarium Red - verify Soong env-i Go memory repair
+on:
+  push:
+    branches: [feature/andd-memory-tuning]
+    paths:
+      - 'build-requests/soong-go-env-probe-*.txt'
+permissions:
+  contents: read
+jobs:
+  verify-memory-shim:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Confirm targeted Go runtime memory controls survive a cleared environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/android17_soong_env_wrapper
+          bash -n scripts/install_android17_soong_env_wrapper.sh
+          bash -n scripts/test_android17_soong_env_wrapper.sh
+          bash scripts/install_android17_soong_env_wrapper.sh --install
+          trap 'bash scripts/install_android17_soong_env_wrapper.sh --restore' EXIT
+          bash scripts/test_android17_soong_env_wrapper.sh
+          echo '## Targeted Soong Go memory bridge passed isolated test' >> "$GITHUB_STEP_SUMMARY"

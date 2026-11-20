@@ -1,0 +1,17 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Temporary executable for /usr/bin/env on disposable GitHub-hosted Linux.
+# Delegate every unrelated invocation to the backed-up coreutils utility.
+# Only Soong's generated Ninja env -i invocation needs Go heap limits.
+set -eo pipefail
+original=/usr/bin/env.andarium-original
+if [[ ! -x "$original" ]]; then
+  echo 'ERROR: backed-up coreutils env missing' >&2
+  exit 125
+fi
+if [[ "$1" == -i && "$2" == */host/linux-x86/bin/soong_build ]]; then
+  echo "ANDARIUM_SOONG_GO_MEMORY_BRIDGE_ACTIVE: GOMEMLIMIT=8GiB GOGC=25 GOMAXPROCS=2" >&2
+  shift
+  exec "$original" -i GOMEMLIMIT=8GiB GOGC=25 GOMAXPROCS=2 GODEBUG=gctrace=1 "$@"
+fi
+exec "$original" "$@"
