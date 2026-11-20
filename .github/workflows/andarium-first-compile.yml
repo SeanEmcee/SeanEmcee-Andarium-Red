@@ -216,6 +216,61 @@ jobs:
             .build/Kernarium/.build/dependencies/ios-zstd
           key: ${{ steps.native_cache.outputs.cache-primary-key }}
 
+      # Cache both the compiled host tools and their original verified source
+      # checkouts. Kernarium's own --verify-only checks the restored prefix
+      # against those source trees before any use; invalid caches fail closed.
+      - name: Restore pinned kernel host-tools and source cache
+        id: host_tools_cache
+        if: inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            .build/Kernarium/.build/dependencies/kernel-host-tools
+            .build/Kernarium/.build/dependency-cache/git/gawk
+            .build/Kernarium/.build/dependency-cache/git/argp-standalone
+            .build/Kernarium/.build/dependency-cache/git/musl-obstack
+            .build/Kernarium/.build/dependency-cache/git/elfutils
+            .build/Kernarium/.build/dependency-cache/git/libbpf
+            .build/Kernarium/.build/dependency-cache/git/dwarves
+            .build/Kernarium/.build/dependency-cache/archives
+            .build/Kernarium/external/sources/gawk
+            .build/Kernarium/external/sources/argp-standalone
+            .build/Kernarium/external/sources/musl-obstack
+            .build/Kernarium/external/sources/elfutils
+            .build/Kernarium/external/sources/libbpf
+            .build/Kernarium/external/sources/dwarves
+          key: andarium-kernel-host-tools-v1-${{ runner.os }}-${{ runner.arch }}-fbe12ee72d195f0241c4fc24090a98b259026604-${{ hashFiles('.build/Kernarium/dependencies/manifest.tsv', '.build/Kernarium/dependencies/kernel-host-tools/archives.tsv') }}
+
+      - name: Prepare and independently verify Kernarium kernel host tools
+        if: inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/prepare_kernarium_kernel_host_tools.sh "$PWD/.build/Kernarium" 2>&1 |
+            tee .build/ci/kernel-host-tools.log
+
+      - name: Save pinned kernel host-tools and authenticated source cache
+        if: (inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))) && steps.host_tools_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        continue-on-error: true
+        with:
+          path: |
+            .build/Kernarium/.build/dependencies/kernel-host-tools
+            .build/Kernarium/.build/dependency-cache/git/gawk
+            .build/Kernarium/.build/dependency-cache/git/argp-standalone
+            .build/Kernarium/.build/dependency-cache/git/musl-obstack
+            .build/Kernarium/.build/dependency-cache/git/elfutils
+            .build/Kernarium/.build/dependency-cache/git/libbpf
+            .build/Kernarium/.build/dependency-cache/git/dwarves
+            .build/Kernarium/.build/dependency-cache/archives
+            .build/Kernarium/external/sources/gawk
+            .build/Kernarium/external/sources/argp-standalone
+            .build/Kernarium/external/sources/musl-obstack
+            .build/Kernarium/external/sources/elfutils
+            .build/Kernarium/external/sources/libbpf
+            .build/Kernarium/external/sources/dwarves
+          key: ${{ steps.host_tools_cache.outputs.cache-primary-key }}
+
       - name: Build and verify pinned Android 17 ARM64 4 KiB kernel
         if: inputs.phase == 'host-unsigned' || inputs.phase == 'red-ipa' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[host-unsigned]'))
         shell: bash
