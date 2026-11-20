@@ -1,0 +1,4 @@
+Andarium Red unsigned host retry r4 after real upstream dependency build succeeded.
+Cause: Homebrew llvm 23 no longer ships /opt/homebrew/opt/llvm/bin/ld.lld, must brew install lld and set UML_KERNEL_LD to $(brew --prefix lld)/bin/ld.lld.
+Build pinned ARM64 Android kernel and ABI29 4KiB artifact; then compile real iOS host.
+No Nexaris, fake root, fake Android image, signing secrets, or bypasses.
