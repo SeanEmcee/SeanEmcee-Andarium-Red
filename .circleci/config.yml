@@ -1,0 +1,106 @@
+version: 2.1
+
+# Cloud-only Android 17 producer. Requires this repository to be connected
+# to CircleCI and a project-level GITHUB_TOKEN with Actions read access.
+# The 150 GB VM disk is a ceiling, not a guarantee that AOSP will fit.
+jobs:
+  android17-red-proof:
+    machine:
+      image: android:current
+    resource_class: xlarge.gen2
+    working_directory: ~/project
+    environment:
+      KERNEL_RUN_ID: "44663014989"
+      KERNEL_SOURCE_SHA: "46d252bf087411be9a4dfe2013f321a06bc566c4"
+      KERNARIUM_SHA: "fbe12ee72d195f0241c4fc24090a98b259026604"
+      BUILD_NUMBER: "1001"
+    steps:
+      - checkout
+      - run:
+          name: Require exact source branch, x86_64 and adequate workspace
+          command: |
+            set -euo pipefail
+            test "$CIRCLE_BRANCH" = "feature/andd-memory-tuning"
+            test "$(uname -m)" = x86_64
+            : "${GITHUB_TOKEN:?Configure GitHub Actions read token in CircleCI project settings}"
+            df -h .
+            free -h
+            # 150 GB decimal disks contain at most ~139.7 GiB before OS.
+            # Fail before costly Repo sync if less than 110 GiB is free.
+            free_kib=$(df -Pk "$HOME" | awk 'END {print $4}')
+            test "$free_kib" -ge 115343360 || {
+              echo "Insufficient free disk for attempted Android source build" >&2
+              exit 1
+            }
+      - run:
+          name: Install pinned build prerequisites
+          command: |
+            set -euo pipefail
+            sudo apt-get update
+            sudo apt-get install -y git-lfs git-repo openjdk-17-jdk python3 zip unzip curl jq
+            git lfs version
+            repo version
+      - run:
+          name: Checkout exact reviewed Kernarium
+          command: |
+            set -euo pipefail
+            mkdir -p .build
+            git clone --filter=blob:none --no-checkout https://github.com/imxieyi/Kernarium.git .build/Kernarium
+            git -C .build/Kernarium checkout --detach "$KERNARIUM_SHA"
+            test "$(git -C .build/Kernarium rev-parse HEAD)" = "$KERNARIUM_SHA"
+      - run:
+          name: Download verified kernel from successful GitHub Actions run
+          command: |
+            set -euo pipefail
+            python3 - <<'PY'
+            import json, os, urllib.request, zipfile, io, pathlib
+            repo='SeanEmcee/SeanEmcee-Andarium-Red'
+            run=os.environ['KERNEL_RUN_ID']
+            name='andarium-pinned-android17-abi29-4k-kernel-'+os.environ['KERNEL_SOURCE_SHA']
+            headers={'Authorization':'Bearer '+os.environ['GITHUB_TOKEN'],'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}
+            def request(url):
+                return urllib.request.urlopen(urllib.request.Request(url,headers=headers),timeout=180)
+            with request(f'https://api.github.com/repos/{repo}/actions/runs/{run}/artifacts?per_page=100') as r:
+                artifacts=json.load(r)['artifacts']
+            matches=[a for a in artifacts if a['name']==name and not a['expired']]
+            if len(matches)!=1: raise SystemExit('Expected exactly one unexpired kernel artifact')
+            with request(matches[0]['archive_download_url']) as r:
+                archive=r.read()
+            dest=pathlib.Path('.build/android-kernel')
+            dest.mkdir(parents=True,exist_ok=True)
+            with zipfile.ZipFile(io.BytesIO(archive)) as z:
+                for item in z.infolist():
+                    p=pathlib.PurePosixPath(item.filename)
+                    if p.is_absolute() or '..' in p.parts or item.is_dir() and not p.parts:
+                        raise SystemExit('Unsafe artifact entry')
+                    if item.external_attr >> 16 & 0o170000 == 0o120000:
+                        raise SystemExit('Symlink artifact entry rejected')
+                    z.extract(item,dest)
+            print('Downloaded kernel artifact',matches[0]['id'])
+            PY
+      - run:
+          name: Compile genuine modified Red Android 17 image and verify
+          no_output_timeout: 30m
+          command: |
+            set -euo pipefail
+            mkdir -p "$HOME/andarium-red-aosp17"
+            bash scripts/build_red_android17_proof.sh \
+              "$PWD/.build/Kernarium" "$HOME/andarium-red-aosp17" \
+              "$PWD/.build/android-kernel" "$PWD/.build/red-proof" \
+              "$BUILD_NUMBER" --jobs 6 --diagnostic-userdebug
+            python3 .build/Kernarium/Andarium/scripts/stage-system-image.py \
+              --release "$PWD/.build/red-proof" --unsigned-proof \
+              --output "$PWD/.build/andarium-system"
+      - store_artifacts:
+          path: .build/red-proof
+          destination: andarium-red-android17-proof
+      - store_artifacts:
+          path: .build/andarium-system
+          destination: andarium-system-verified
+workflows:
+  android17-proof:
+    jobs:
+      - android17-red-proof:
+          filters:
+            branches:
+              only: feature/andd-memory-tuning
