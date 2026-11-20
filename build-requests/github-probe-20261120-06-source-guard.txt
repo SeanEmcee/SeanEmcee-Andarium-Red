@@ -1,0 +1,1 @@
+Lightweight source/checkpoint/cache safety tests before the next full build; do not run full Android source sync.

@@ -97,12 +97,32 @@ python3 -B "$common/artifacts/verify-kernel-artifact.py" \
   --expected-slice arm64 --expected-release-series 6.18 \
   --descriptor "$kernarium/kernel/mainline-6.18/artifacts/accepted-android-4k.env"
 
-# Both integration preflights must pass before modifying the source checkout.
+# A split build must use the same reviewed source and variant in both phases.
 variant_args=()
 if (( diagnostic )); then variant_args=(--diagnostic-userdebug); fi
-python3 -B "$repo_source/integrate_andarium.py" \
-  --kernarium "$kernarium" --source "$repo_source" "${variant_args[@]}" --dry-run
-if (( ! use_prepared_source )); then
+source_checkpoint="$aosp/.andarium-red-source-checkpoint.json"
+source_revision="$(git -C "$repo_source" rev-parse HEAD)"
+if (( use_prepared_source )); then
+  python3 -B - "$source_checkpoint" "$source_revision" "$number" "$diagnostic" <<'PY'
+import json
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+expected = {"schema": 1, "red_revision": sys.argv[2],
+            "build_number": sys.argv[3], "diagnostic_userdebug": sys.argv[4] == "1",
+            "kernarium": "fbe12ee72d195f0241c4fc24090a98b259026604"}
+try:
+    actual = json.loads(path.read_text(encoding="utf-8"))
+except (OSError, ValueError) as error:
+    raise SystemExit(f"ERROR: missing/invalid prepared-source checkpoint: {error}")
+if actual != expected:
+    raise SystemExit("ERROR: source checkpoint does not belong to this exact build")
+print("ANDARIUM_PREPARED_SOURCE_CHECKPOINT_MATCHED")
+PY
+else
+  # Non-idempotent overlay installation and its preflight run only once.
+  python3 -B "$repo_source/integrate_andarium.py" \
+    --kernarium "$kernarium" --source "$repo_source" "${variant_args[@]}" --dry-run
   python3 -B "$repo_source/integrate_andarium.py" \
     --kernarium "$kernarium" --source "$repo_source" "${variant_args[@]}"
 fi
@@ -123,7 +143,7 @@ fi
 
 # The vendor's preparer requires an initialized Repo workspace; initialize
 # only its pinned, reviewed public LineageOS manifest if absent.
-if [[ ! -d "$aosp/.repo/manifests" ]]; then
+if (( ! use_prepared_source )) && [[ ! -d "$aosp/.repo/manifests" ]]; then
   (
     cd "$aosp"
     repo init -u https://github.com/LineageOS/android.git \
@@ -136,7 +156,7 @@ fi
 # The source-cache is optional. It contains real pinned Git histories and
 # tracked patch replays checked by the unchanged upstream accessibility verifier.
 # Never reuse an unverified cache or silently replace a pinned checkout.
-if [[ -n "${ANDARIUM_ACCESSIBILITY_CACHE:-}" ]]; then
+if (( ! use_prepared_source )) && [[ -n "${ANDARIUM_ACCESSIBILITY_CACHE:-}" ]]; then
   cached="$ANDARIUM_ACCESSIBILITY_CACHE/aosp"
   python3 -B "$kernarium/android/lineage-24/tools/verify-accessibility-source.py" \
     --android-root "$kernarium/android/lineage-24" --aosp-source "$cached"
@@ -169,6 +189,19 @@ python3 -B android/lineage-24/tools/verify-mesa-venus-source.py \
 python3 -B android/lineage-24/tools/verify-accessibility-source.py \
   --android-root "$kernarium/android/lineage-24" --aosp-source "$aosp"
 if (( source_checkpoint_only )); then
+  # Persist exact build identity only AFTER upstream source verifiers succeed.
+  python3 -B - "$source_checkpoint" "$source_revision" "$number" "$diagnostic" <<'PY'
+import json
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+payload = {"schema": 1, "red_revision": sys.argv[2],
+           "build_number": sys.argv[3], "diagnostic_userdebug": sys.argv[4] == "1",
+           "kernarium": "fbe12ee72d195f0241c4fc24090a98b259026604"}
+if path.exists() or path.is_symlink():
+    raise SystemExit("ERROR: cannot replace an existing source checkpoint")
+path.write_text(json.dumps(payload, sort_keys=True) + "\n", encoding="utf-8")
+PY
   echo "ANDARIUM_ANDROID17_SOURCE_CHECKPOINT_VERIFIED=$aosp"
   exit 0
 fi

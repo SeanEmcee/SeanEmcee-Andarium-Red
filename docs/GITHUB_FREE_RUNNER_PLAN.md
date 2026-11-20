@@ -85,3 +85,5 @@ runner rather than a disposable free hosted VM.
 The hosted build also prints cgroup memory events, memory pressure and
 disk usage every 45 seconds during Soong so an abrupt runner shutdown
 has pre-stop diagnostics even when an after-failure action cannot execute.
+
+The source split now has an exact same-revision/variant checkpoint and skips duplicate overlay or accessibility restoration on continuation. A lightweight probe validates Bash and the Git seed parser before another full build.

@@ -43,6 +43,15 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Validate Android source checkpoint and seed scripts
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/build_red_android17_proof.sh
+          bash -n scripts/prepare_github_hosted_disk.sh
+          bash -n scripts/prepare_compressed_aosp_circleci.sh
+          python3 -B -m py_compile scripts/prepare_pinned_repo_seed.py
+          python3 -B scripts/test_android17_source_checkpoint.py
       - name: Reclaim unrelated preinstalled toolchains on disposable free runner
         shell: bash
         run: bash scripts/prepare_github_hosted_disk.sh
@@ -115,6 +124,7 @@ jobs:
           repo version
           df -h /
       - uses: actions/cache/restore@v4
+        id: kernarium_cache
         with:
           path: .build/Kernarium
           key: andarium-gh-kernarium-fbe12ee72d195f0241c4fc24090a98b259026604
@@ -131,10 +141,12 @@ jobs:
           test "$(git -C .build/Kernarium rev-parse HEAD)" = "$KERNARIUM_SHA"
           test -z "$(git -C .build/Kernarium status --porcelain --untracked-files=all)"
       - uses: actions/cache/save@v4
+        if: steps.kernarium_cache.outputs.cache-hit != 'true'
         with:
           path: .build/Kernarium
           key: andarium-gh-kernarium-fbe12ee72d195f0241c4fc24090a98b259026604
       - uses: actions/cache/restore@v4
+        id: kernel_cache
         with:
           path: .build/android-6.18-arm64-4k-20261119-6.18.60-ca1
           key: andarium-gh-abi29-69bd28b45746a09c7b52dfd0fcc9ce728a7b20d3cf9817fe78cbd29afa7cd166
@@ -159,10 +171,12 @@ jobs:
             --expected-slice arm64 --expected-release-series 6.18 \
             --descriptor "$PWD/.build/Kernarium/kernel/mainline-6.18/artifacts/accepted-android-4k.env"
       - uses: actions/cache/save@v4
+        if: steps.kernel_cache.outputs.cache-hit != 'true'
         with:
           path: .build/android-6.18-arm64-4k-20261119-6.18.60-ca1
           key: andarium-gh-abi29-69bd28b45746a09c7b52dfd0fcc9ce728a7b20d3cf9817fe78cbd29afa7cd166
       - uses: actions/cache/restore@v4
+        id: accessibility_cache
         with:
           path: .build/accessibility-cache
           key: andarium-gh-accessibility-fbe12ee72d195f0241c4fc24090a98b259026604
@@ -177,6 +191,7 @@ jobs:
           export GIT_TERMINAL_PROMPT=0
           bash scripts/prepare_accessibility_cache_circleci.sh "$PWD/.build/Kernarium" "$PWD/.build/accessibility-cache"
       - uses: actions/cache/save@v4
+        if: steps.accessibility_cache.outputs.cache-hit != 'true'
         with:
           path: .build/accessibility-cache
           key: andarium-gh-accessibility-fbe12ee72d195f0241c4fc24090a98b259026604
