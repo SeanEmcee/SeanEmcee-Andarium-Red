@@ -112,7 +112,8 @@ jobs:
           command: |
             set -euo pipefail
             mkdir -p .build
-            printf '[user]\\n  name = Andarium Red CI\\n  email = andarium-red-ci@localhost.invalid\\n' > .build/clean-gitconfig
+            git config --file "$PWD/.build/clean-gitconfig" user.name "Andarium Red CI"
+            git config --file "$PWD/.build/clean-gitconfig" user.email "andarium-red-ci@localhost.invalid"
             export GIT_CONFIG_NOSYSTEM=1
             export GIT_CONFIG_GLOBAL="$PWD/.build/clean-gitconfig"
             export GIT_TERMINAL_PROMPT=0
