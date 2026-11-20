@@ -14,6 +14,25 @@ source_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
   exit 1
 }
 cd "$kernarium"
+# This stage precedes prepare_kernarium_4k_kernel.sh, which used to install
+# GNU Make and activate the Meson virtualenv. Provision these here so a cache
+# miss still has the exact build tools Kernarium's host-tools builder requires.
+# The upstream builder retains its own tool validation and prefix verifier.
+if [[ ! -f "$kernarium/.build/gpu-tools-venv/bin/activate" ]]; then
+  echo "ERROR: verified iOS dependency stage did not create the Meson tool venv" >&2
+  exit 1
+fi
+# shellcheck source=/dev/null
+source "$kernarium/.build/gpu-tools-venv/bin/activate"
+brew install make
+export PATH="$(brew --prefix make)/bin:$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$PATH"
+for tool in gmake meson ninja cmake xcrun autoreconf bison flex m4 rsync tar python3; do
+  command -v "$tool" >/dev/null 2>&1 || {
+    echo "ERROR: required pinned kernel host-tool builder input unavailable: $tool" >&2
+    exit 1
+  }
+done
+echo "KERNEL_HOST_TOOLCHAIN_READY: GNU Make, Meson and pinned compiler inputs available"
 # Patch authors and canonical trees remain pinned by upstream; CI supplies
 # only a stable committer identity for git-am during source materialization.
 export GIT_COMMITTER_NAME='Andarium Red Kernel Host Tools CI'
