@@ -237,10 +237,21 @@ jobs:
           export GIT_CONFIG_GLOBAL="$PWD/.build/clean-gitconfig"
           export GIT_TERMINAL_PROMPT=0
           export ANDARIUM_ACCESSIBILITY_CACHE="$PWD/.build/accessibility-cache"
+          mkdir -p diagnostics
+          set +e
           bash scripts/build_red_android17_proof.sh \
             "$PWD/.build/Kernarium" "$HOME/andarium-red-aosp17" \
             "$PWD/.build/$KERNEL_DIR" "$PWD/.build/red-proof" \
-            "$BUILD_NUMBER" --jobs 4 --diagnostic-userdebug --source-checkpoint-only
+            "$BUILD_NUMBER" --jobs 4 --diagnostic-userdebug --source-checkpoint-only 2>&1 | tee diagnostics/source-sync-full.log
+          code=${PIPESTATUS[0]}
+          set -e
+          tail -c 16000000 diagnostics/source-sync-full.log > diagnostics/source-sync-last-16mb.log
+          rm -f -- diagnostics/source-sync-full.log
+          echo "ANDROID17_SOURCE_SYNC_EXIT_CODE=$code" | tee diagnostics/source-sync-result.txt
+          if (( code != 0 )); then
+            echo "::error::Pinned Android17 source sync failed ($code); see diagnostics artifact"
+            exit "$code"
+          fi
           echo "ANDROID17_SOURCE_SYNC_AND_PATCH_VERIFIED"
       - name: Create optional 3 GiB Git object seed after authenticated source sync
         if: steps.repo_seed.outputs.cache-hit != 'true'
@@ -270,7 +281,7 @@ jobs:
           MALLOC_ARENA_MAX: '2'
         run: |
           set -euo pipefail
-          mkdir -p .build/ci
+          mkdir -p diagnostics
           echo "SOONG_MEMORY_POLICY: enable audited in-process host Go runtime caps after verified source checks"
           python3 -B scripts/test_soong_host_runtime_patch.py
           export GIT_CONFIG_NOSYSTEM=1
@@ -292,7 +303,7 @@ jobs:
                 if [[ -r /sys/fs/cgroup/memory.current ]]; then
                   echo "CGROUP_MEMORY_BYTES=$(cat /sys/fs/cgroup/memory.current)"
                 fi
-              } | tee -a .build/ci/resource-samples.log
+              } | tee -a diagnostics/resource-samples.log
               sleep 45
             done
           }
@@ -304,12 +315,12 @@ jobs:
           bash scripts/build_red_android17_proof.sh \
             "$PWD/.build/Kernarium" "$HOME/andarium-red-aosp17" \
             "$PWD/.build/$KERNEL_DIR" "$PWD/.build/red-proof" \
-            "$BUILD_NUMBER" --jobs 1 --diagnostic-userdebug --use-prepared-source 2>&1 | tee .build/ci/andarium-build-complete.log
+            "$BUILD_NUMBER" --jobs 1 --diagnostic-userdebug --use-prepared-source 2>&1 | tee diagnostics/andarium-build-complete.log
           code=${PIPESTATUS[0]}
           set -e
-          tail -c 16000000 .build/ci/andarium-build-complete.log > .build/ci/andarium-build-last-16mb.log
-          rm -f -- .build/ci/andarium-build-complete.log
-          echo "ANDROID17_COMPILER_EXIT_CODE=$code" | tee -a .build/ci/compile-result.txt
+          tail -c 16000000 diagnostics/andarium-build-complete.log > diagnostics/andarium-build-last-16mb.log
+          rm -f -- diagnostics/andarium-build-complete.log
+          echo "ANDROID17_COMPILER_EXIT_CODE=$code" | tee -a diagnostics/compile-result.txt
           if (( code != 0 )); then
             echo "::error::Android 17 compilation exited $code; inspect andarium-android17-diagnostics artifact."
             exit "$code"
@@ -324,7 +335,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: andarium-android17-diagnostics-${{ github.run_id }}
-          path: .build/ci/
+          path: diagnostics/
           retention-days: 14
           if-no-files-found: warn
       - name: Upload real verified Android 17 Red proof (never fabricated)

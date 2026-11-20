@@ -1,0 +1,1 @@
+Verify cheap pinned Repo fail-fast checkout of ConfigInfrastructure first and one bounded serial retry for transient checkout failure; preserve unchanged upstream manifest and source checks. Do not run full Android build in probe.

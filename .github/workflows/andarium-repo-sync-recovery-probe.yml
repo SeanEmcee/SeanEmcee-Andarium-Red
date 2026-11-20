@@ -1,0 +1,49 @@
+name: Andarium Red - validate pinned Repo sync recovery
+on:
+  push:
+    branches: [feature/andd-memory-tuning]
+    paths:
+      - 'build-requests/repo-sync-recovery-probe-*.txt'
+permissions:
+  contents: read
+jobs:
+  validate-repo-sync:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Test safe scoped project prefetch and single-worker retry derivation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B -m py_compile scripts/create_verified_repo_sync_driver.py
+          python3 -B scripts/test_verified_repo_sync_driver.py
+          bash -n scripts/build_red_android17_proof.sh
+          echo 'PASS: pinned manifest preserved; verified Repo recovery derivative' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/cache/restore@v4
+        with:
+          path: .build/Kernarium
+          key: andarium-gh-kernarium-fbe12ee72d195f0241c4fc24090a98b259026604
+      - name: Verify derivative against original pinned Kernarium prepare-sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ ! -d .build/Kernarium/.git ]]; then
+            test ! -e .build/Kernarium
+            git clone --filter=blob:none --no-checkout https://github.com/imxieyi/Kernarium.git .build/Kernarium
+            git -C .build/Kernarium checkout --detach fbe12ee72d195f0241c4fc24090a98b259026604
+          fi
+          test "$(git -C .build/Kernarium rev-parse HEAD)" = fbe12ee72d195f0241c4fc24090a98b259026604
+          original="$PWD/.build/Kernarium/android/lineage-24/build/prepare-sources.sh"
+          derived="$PWD/.build/Kernarium/android/lineage-24/build/prepare-sources.andarium-ci.sh"
+          mkdir -p diagnostics
+          python3 -B scripts/create_verified_repo_sync_driver.py \
+            --original "$original" --derived "$derived" \
+            --audit "$PWD/diagnostics/source-preparer-audit.txt"
+          sh -n "$derived"
+          grep -F 'POLICY=pinned_manifest' diagnostics/source-preparer-audit.txt
+          rm -f -- "$derived"
+          test -z "$(git -C .build/Kernarium status --porcelain --untracked-files=all)"
+          echo 'PASS: real pinned Repo producer unchanged; source retry controls reviewed' >> "$GITHUB_STEP_SUMMARY"

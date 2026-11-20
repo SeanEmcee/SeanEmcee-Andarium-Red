@@ -176,7 +176,15 @@ fi
 
 cd "$kernarium"
 if (( ! use_prepared_source )); then
-  android/lineage-24/build/prepare-sources.sh --aosp-source "$aosp" --jobs "$jobs"
+  original_sync="$kernarium/android/lineage-24/build/prepare-sources.sh"
+  derived_sync="$kernarium/android/lineage-24/build/prepare-sources.andarium-ci.sh"
+  python3 -B "$repo_source/scripts/create_verified_repo_sync_driver.py" \
+    --original "$original_sync" --derived "$derived_sync" \
+    --audit "$repo_source/diagnostics/source-preparer-audit.txt"
+  trap 'rm -f -- "$derived_sync"' EXIT
+  "$derived_sync" --aosp-source "$aosp" --jobs "$jobs"
+  rm -f -- "$derived_sync"
+  trap - EXIT
   android/lineage-24/build/apply-aosp-patches.sh --aosp-source "$aosp"
 fi
 # A previously prepared source tree may only skip synchronization inside the
