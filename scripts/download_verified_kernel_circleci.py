@@ -57,7 +57,7 @@ archive = get_public_asset(NAME + ".tar.gz")
 if hashlib.sha256(archive).hexdigest() != expected:
     raise SystemExit("Published kernel archive SHA256 mismatch")
 
-dest = pathlib.Path(".build/android-kernel")
+dest = pathlib.Path(".build/android-6.18-arm64-4k-20261119-6.18.60-ca1")
 if dest.exists():
     raise SystemExit("Refusing to overwrite an existing kernel artifact directory")
 written = 0
@@ -66,7 +66,7 @@ with tarfile.open(fileobj=io.BytesIO(archive), mode="r:gz") as tar:
     for member in tar:
         path = pathlib.PurePosixPath(member.name)
         if (path.is_absolute() or ".." in path.parts or not path.parts
-                or path.parts[0] != "android-kernel"):
+                or path.parts[0] != "android-6.18-arm64-4k-20261119-6.18.60-ca1"):
             raise SystemExit("Invalid kernel archive path")
         if member.isdir():
             continue
