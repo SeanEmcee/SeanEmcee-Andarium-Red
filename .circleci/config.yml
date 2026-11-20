@@ -64,7 +64,7 @@ jobs:
             mkdir -p "$HOME/andarium-red-aosp17"
             bash scripts/build_red_android17_proof.sh \
               "$PWD/.build/Kernarium" "$HOME/andarium-red-aosp17" \
-              "$PWD/.build/android-kernel" "$PWD/.build/red-proof" \
+              "$PWD/.build/android-6.18-arm64-4k-20261119-6.18.60-ca1" "$PWD/.build/red-proof" \
               "$BUILD_NUMBER" --jobs 4 --diagnostic-userdebug
             python3 .build/Kernarium/Andarium/scripts/stage-system-image.py \
               --release "$PWD/.build/red-proof" --unsigned-proof \
