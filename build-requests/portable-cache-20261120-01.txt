@@ -1,0 +1,1 @@
+Verify real saved pinned bare Git-object cache and publish chunked public GitHub Release for a potentially free alternative CI provider. No Android compilation.

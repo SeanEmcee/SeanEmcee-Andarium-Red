@@ -1,0 +1,62 @@
+name: Andarium Red - portable source cache export
+on:
+  push:
+    branches: [feature/andd-memory-tuning]
+    paths:
+      - 'build-requests/portable-cache-*.txt'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  export-pinned-source-cache:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Restore original GitHub source-object seed
+        id: seed
+        uses: actions/cache/restore@v4
+        with:
+          path: /home/runner/andarium-red-aosp17/.andarium-repo-seed
+          key: andarium-gh-repo-object-seed-v1-fbe12ee72d195f0241c4fc24090a98b259026604-20261115-los24-r28
+          fail-on-cache-miss: true
+      - name: Verify real bare Git objects, make portable archive, hash each chunk
+        env:
+          SEED_HIT: ${{ steps.seed.outputs.cache-hit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$SEED_HIT" = true
+          seed="$HOME/andarium-red-aosp17/.andarium-repo-seed"
+          python3 -B scripts/verify_portable_source_seed.py "$seed"
+          command -v zstd
+          mkdir -p .build/portable-cache
+          tar -C "$(dirname "$seed")" -cf - .andarium-repo-seed |
+            zstd -3 -T2 -c |
+            split -b 1400m - .build/portable-cache/andarium-source-seed.part-
+          cd .build/portable-cache
+          sha256sum andarium-source-seed.part-* > SHA256SUMS
+          cp "$seed/seed-manifest.json" seed-manifest.json
+          printf '%s\n' 'Selected public pinned Git histories only. Not a full AOSP source checkout or Android image.' 'Verify SHA256SUMS and run original source synchronization and verifiers after restoring.' > README.txt
+          du -sh .; cat SHA256SUMS
+      - name: Publish public portable source seed for another CI service
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag=andarium-aosp17-git-object-cache-20261120
+          if gh release view "$tag" --repo "$GH_REPO" >/dev/null 2>&1; then
+            echo "ERROR: refusing to overwrite an existing cache release" >&2
+            exit 1
+          fi
+          gh release create "$tag" --repo "$GH_REPO" --target "$GITHUB_SHA" --draft --title 'Portable Andarium Red Android17 public Git objects' --notes 'Verified bounded source-object cache for normal pinned Repo sync; not an Android ROM.'
+          gh release upload "$tag" .build/portable-cache/* --repo "$GH_REPO"
+          gh release edit "$tag" --repo "$GH_REPO" --draft=false
+          echo "Release: https://github.com/$GH_REPO/releases/tag/$tag" >> "$GITHUB_STEP_SUMMARY"
