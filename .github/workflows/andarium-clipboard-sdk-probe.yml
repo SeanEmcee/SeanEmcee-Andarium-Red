@@ -1,0 +1,23 @@
+name: Andarium Red - Soong product clipboard SDK compatibility
+on:
+  push:
+    branches: [feature/andd-memory-tuning]
+    paths:
+      - 'build-requests/clipboard-sdk-probe-*.txt'
+permissions:
+  contents: read
+jobs:
+  clipboard-sdk-soong-contract:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify Android17 product SDK property and original clipboard integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B tests/test_guest_clipboard_soong_sdk.py
+          python3 -B -m unittest discover -s tests -p 'test_v12_clipboard_safety.py' -v
+          echo 'Clipboard product SDK contract: PASS (static source test)' >> "$GITHUB_STEP_SUMMARY"

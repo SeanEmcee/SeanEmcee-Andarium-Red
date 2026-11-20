@@ -1,0 +1,1 @@
+Verify the exact Android17 Soong product SDK rule: TwoyiRedClipboard must specify system_current and must not enable platform_apis. Preserve product_specific, privileged, platform cert, manifest and host clipboard. Run cheap source and clipboard unit tests before full build.

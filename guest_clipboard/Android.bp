@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
-// Platform-signed to allow explicit user-requested clipboard reads while backgrounded.
+// Platform-signed privileged product clipboard bridge; compile against the system SDK.
 android_app {
     name: "TwoyiRedClipboard",
     srcs: ["java/**/*.java"],
     manifest: "AndroidManifest.xml",
-    platform_apis: true,
+    // Product apps require a declared stable SDK surface on Android 17.
+    // platform_apis must stay unset when sdk_version is specified.
+    sdk_version: "system_current",
     certificate: "platform",
     product_specific: true,
     privileged: true,
