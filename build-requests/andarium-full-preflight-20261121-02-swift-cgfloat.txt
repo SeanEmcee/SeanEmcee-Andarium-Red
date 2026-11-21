@@ -1,0 +1,1 @@
+Repeat all 167 current Andarium Red source tests plus Bash/Python syntax, Java Android SDK compilation, manifest XML checks, pinned host-build checks, and actual Linux Swift compiler harness after replacing ambiguous CGSize .init Int conversions with explicit CGFloat. This is early fail-fast source check; do not run complete Android image build in probe.
