@@ -121,6 +121,14 @@ jobs:
           # The full source audit is much cheaper than a 100+GiB Repo sync.
           bash -n scripts/preflight_all_android17_sources.sh
           bash scripts/preflight_all_android17_sources.sh
+      - name: Load ZRAM module and enable 16 GiB virtual compressed swap before expensive sync
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/provision_android17_zram_swap.sh
+          bash scripts/provision_android17_zram_swap.sh 16
+          swapon --show
+          echo "ANDARIUM_ZRAM_EARLY_BOOTSTRAP_READY"
       - name: Reclaim disk space and enforce sufficient capacity
         shell: bash
         run: |
@@ -282,12 +290,6 @@ jobs:
         with:
           path: /home/runner/andarium-red-aosp17/.andarium-repo-seed
           key: andarium-gh-repo-object-seed-v1-fbe12ee72d195f0241c4fc24090a98b259026604-20261115-los24-r28
-      - name: Provision independently verified 16 GiB virtual ZRAM swap for Soong
-        shell: bash
-        run: |
-          set -euo pipefail
-          bash -n scripts/provision_android17_zram_swap.sh
-          bash scripts/provision_android17_zram_swap.sh 16
       - name: Provision checked extra swap before Soong bootstrap
         shell: bash
         run: |

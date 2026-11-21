@@ -1,0 +1,35 @@
+name: Andarium Red - validate early ZRAM module load before AOSP
+on:
+  push:
+    branches: [feature/andd-memory-tuning]
+    paths:
+      - 'build-requests/zram-early-probe-*.txt'
+permissions:
+  contents: read
+jobs:
+  validate-early-zram-module:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Test ZRAM preflight ordering and real free hosted kernel
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -B tests/test_early_zram_setup.py
+          bash -n scripts/provision_android17_zram_swap.sh
+          echo "PRE_MODULE_STATE:"
+          ls -ld /sys/class/zram-control /sys/block/zram* 2>&1 || true
+          bash scripts/provision_android17_zram_swap.sh 16 | tee early-zram-result.txt
+          grep -Fx 'ANDARIUM_ADDITIONAL_ZRAM_SWAP_GIB=16' early-zram-result.txt
+          grep -Fx 'ANDARIUM_ZRAM_KERNEL_MODULE_LOADED' early-zram-result.txt
+          echo "PASS: early load and activate 16GiB compressed ZRAM" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: andarium-zram-module-init-probe
+          path: early-zram-result.txt
+          retention-days: 14
+          if-no-files-found: warn

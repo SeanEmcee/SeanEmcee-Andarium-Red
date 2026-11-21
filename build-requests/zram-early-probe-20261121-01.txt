@@ -1,0 +1,1 @@
+Validate on free GitHub runner: ZRAM kernel module must load BEFORE checking /sys/class/zram-control/hot_add. Prove actual 16GiB virtual ZRAM activation and early full-workflow placement before AOSP source sync, without downloading Android. Preserve existing source cache keys.

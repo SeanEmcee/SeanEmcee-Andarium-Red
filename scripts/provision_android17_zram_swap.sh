@@ -13,11 +13,21 @@ if [[ "$gib" != 16 && "$gib" != 6 && "$gib" != 1 ]]; then
   echo "ERROR: supported sizes are 1 GiB probe, 6 GiB validated, or 16 GiB experimental" >&2
   exit 2
 fi
-if [[ ! -e /sys/class/zram-control/hot_add ]]; then
-  echo "ERROR: runner kernel does not support separate ZRAM devices" >&2
+# Critical: some hosted Ubuntu runners have the ZRAM module available
+# but it is not loaded by default. Checking /sys BEFORE modprobe incorrectly
+# rejects those runners. Load it first, then verify the kernel interface.
+echo "ANDARIUM_ZRAM_KERNEL=$(uname -r)"
+if ! sudo modprobe zram; then
+  echo "ERROR: runner could not load the ZRAM kernel module" >&2
   exit 1
 fi
-sudo modprobe zram
+if [[ ! -e /sys/class/zram-control/hot_add ]]; then
+  echo "ERROR: ZRAM module loaded but kernel exposes no hot_add interface" >&2
+  echo "ANDROID17_ZRAM_MODULE_DIAGNOSTICS:" >&2
+  ls -ld /sys/class/zram-control /sys/block/zram* 2>&1 || true
+  exit 1
+fi
+echo "ANDARIUM_ZRAM_KERNEL_MODULE_LOADED"
 device_no="$(sudo cat /sys/class/zram-control/hot_add)"
 if [[ ! "$device_no" =~ ^[0-9]+$ ]] || [[ "$device_no" == 0 ]]; then
   echo "ERROR: unsafe or non-new ZRAM device number" >&2
