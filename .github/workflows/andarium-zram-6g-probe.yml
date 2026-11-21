@@ -1,0 +1,30 @@
+name: Andarium Red - verify larger free runner compressed memory
+on:
+  push:
+    branches: [feature/andd-memory-tuning]
+    paths:
+      - 'build-requests/github-zram-6g-probe-*.txt'
+permissions:
+  contents: read
+jobs:
+  verify-six-gib-zram-swap:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Activate and verify additional 6 GiB high-priority ZRAM swap
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/provision_android17_zram_swap.sh
+          bash scripts/provision_android17_zram_swap.sh 6 | tee zram-memory-result.txt
+          grep -Fx 'ANDARIUM_ADDITIONAL_ZRAM_SWAP_GIB=6' zram-memory-result.txt
+          cat zram-memory-result.txt >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andarium-6g-zram-compatibility
+          path: zram-memory-result.txt
+          retention-days: 14
+          if-no-files-found: error

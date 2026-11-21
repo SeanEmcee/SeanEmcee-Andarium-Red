@@ -1,0 +1,1 @@
+Verify 6 GiB extra zram1 compressed RAM swap can be activated on an independent free GitHub Ubuntu runner without consuming six GiB disk. Does not stop or restart the existing Android17 build.
