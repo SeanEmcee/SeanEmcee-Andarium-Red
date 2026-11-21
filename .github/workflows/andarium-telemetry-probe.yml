@@ -1,0 +1,31 @@
+name: Andarium Red - persisted telemetry test
+on:
+  push:
+    branches: [feature/andd-memory-tuning]
+    paths:
+      - 'build-requests/github-telemetry-probe-*.txt'
+permissions:
+  contents: read
+  checks: write
+jobs:
+  probe-github-check-telemetry:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify a neutral check persists a compiler snapshot
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 -B -m py_compile scripts/android17_build_telemetry.py
+          python3 -B scripts/test_android17_build_telemetry.py
+          mkdir -p diagnostics
+          echo 'ANDROID17_RESOURCE_SAMPLE=probe' > diagnostics/resource-samples.log
+          echo 'PROBE ONLY; full Android build not started' > diagnostics/andarium-build-complete.log
+          python3 -B scripts/android17_build_telemetry.py start
+          python3 -B scripts/android17_build_telemetry.py update
+          python3 -B scripts/android17_build_telemetry.py finish
+          echo 'PASS: three GitHub Checks API snapshot operations, no build' >> "$GITHUB_STEP_SUMMARY"

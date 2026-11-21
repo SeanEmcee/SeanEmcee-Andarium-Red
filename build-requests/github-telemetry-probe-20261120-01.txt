@@ -1,0 +1,1 @@
+Test continuous crash-survivable compiler error/memory telemetry in a neutral GitHub check. No Android compilation. Full hosted run #44832888245 died during compilation and skipped diagnostics upload.
