@@ -1,0 +1,57 @@
+name: Andarium Red - persistent free self-hosted Android 17
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/andd-memory-tuning]
+    paths: [build-requests/persistent-android17-execute-*.txt]
+permissions:
+  contents: read
+jobs:
+  build:
+    if: github.ref == 'refs/heads/feature/andd-memory-tuning'
+    runs-on: [self-hosted, linux, x64, andarium-aosp17]
+    timeout-minutes: 6600
+    concurrency:
+      group: andarium-red-persistent
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check local persistent Linux disk and toolchains
+        run: |
+          set -euo pipefail
+          bash -n scripts/andarium_persistent_build.sh
+          bash scripts/andarium_persistent_build.sh preflight
+      - name: Reuse pinned kernel and source or prepare once
+        run: |
+          set -euo pipefail
+          bash scripts/andarium_persistent_build.sh prepare 2>&1 | tee source-step.log
+      - name: Resume real Ninja output until target files are built
+        run: |
+          set -euo pipefail
+          bash scripts/andarium_persistent_build.sh compile 2>&1 | tee compiler-step.log
+      - name: Reverify genuine assembled Android 17 proof
+        run: |
+          set -euo pipefail
+          bash scripts/andarium_persistent_build.sh verify
+      - name: Upload compiled proof only after successful verification
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: andarium-red-android17-proof
+          path: ${{ env.HOME }}/andarium-red-persistent/outputs/red-proof-1001-userdebug/
+          compression-level: 0
+          retention-days: 14
+          if-no-files-found: error
+      - name: Retain limited CI logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: andarium-persistent-build-logs-${{ github.run_id }}
+          path: |
+            source-step.log
+            compiler-step.log
+          retention-days: 14
+          if-no-files-found: warn

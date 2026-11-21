@@ -1,0 +1,1 @@
+Run cheap GH Linux static validation of persistent, resumable self-hosted Android17 workflow and source/compile stage. No huge AOSP sync and no real ROM claim. Do not launch self-hosted job without connected authorized runner.

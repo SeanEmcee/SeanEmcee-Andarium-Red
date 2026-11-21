@@ -1,0 +1,21 @@
+name: Andarium Red - test persistent runner source contract
+on:
+  push:
+    branches: [feature/andd-memory-tuning]
+    paths: [build-requests/persistent-android17-contract-probe-*.txt]
+permissions:
+  contents: read
+jobs:
+  test-configuration:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Syntax and static persistence checks only
+        run: |
+          set -euo pipefail
+          bash -n scripts/andarium_persistent_build.sh
+          python3 -B tests/test_persistent_android17_workflow.py
+          echo 'PASS: persistent job configuration; no full Android build attempted' >> "$GITHUB_STEP_SUMMARY"
