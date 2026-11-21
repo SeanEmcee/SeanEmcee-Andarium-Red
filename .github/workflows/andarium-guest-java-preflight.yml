@@ -1,0 +1,41 @@
+name: Andarium Red - precompile all guest Java sources before AOSP
+on:
+  push:
+    branches: [feature/andd-memory-tuning]
+    paths:
+      - 'build-requests/guest-java-preflight-*.txt'
+permissions:
+  contents: read
+jobs:
+  compile-guest-java:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Compile both guest modules against preinstalled Android SDK surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdk="$(printenv ANDROID_HOME || echo /usr/local/lib/android/sdk)"
+          jar="$(find "$sdk/platforms" -maxdepth 2 -name android.jar -type f | sort -V | tail -n 1)"
+          test -n "$jar"
+          echo "PRECOMPILE_ANDROID_SDK=$jar"
+          javac -version
+          mkdir -p .build/guest-java/launcher .build/guest-java/clipboard
+          echo "Compiling guest Java sources"
+          find launcher_src/java -type f -name '*.java' -print0 |
+            xargs -0 javac -encoding UTF-8 -source 17 -target 17 -cp "$jar" \
+              -d .build/guest-java/launcher
+          find guest_clipboard/java -type f -name '*.java' -print0 |
+            xargs -0 javac -encoding UTF-8 -source 17 -target 17 -cp "$jar" \
+              -d .build/guest-java/clipboard
+          python3 -B - <<'PY'
+          import xml.etree.ElementTree as ET
+          for path in ('launcher_src/AndroidManifest.xml', 'guest_clipboard/AndroidManifest.xml'):
+              tree = ET.parse(path)
+              assert tree.getroot().tag == 'manifest', path
+              print('VALID_ANDROID_XML='+path)
+          PY
+          echo 'PASS: full guest launcher + clipboard Java source compiles against the SDK stubs' >> "$GITHUB_STEP_SUMMARY"

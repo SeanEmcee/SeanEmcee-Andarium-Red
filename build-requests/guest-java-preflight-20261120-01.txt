@@ -1,0 +1,1 @@
+Precompile all Andarium Red launcher and clipboard Java files using installed Android SDK android.jar and validate guest manifests, without full Android Repo download. This is a cheap separate runner test and does not affect running Android17 build.
