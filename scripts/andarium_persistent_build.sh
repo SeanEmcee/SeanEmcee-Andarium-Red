@@ -14,7 +14,7 @@ revision="$(git -C "$repo_source" rev-parse HEAD)"
 [[ "$(uname -s)" == Linux && "$(uname -m)" == x86_64 && "$(id -u)" != 0 ]] || {
  echo "ERROR: use a non-root Linux x86_64 host, e.g. Ubuntu in WSL2" >&2; exit 2;
 }
-if [[ "$GITHUB_ACTIONS" == true && "$RUNNER_ENVIRONMENT" != self-hosted ]]; then
+if [[ "${GITHUB_ACTIONS:-}" == true && "${RUNNER_ENVIRONMENT:-}" != self-hosted ]]; then
  echo "ERROR: this build requires persistent self-hosted Linux, not an ephemeral runner" >&2; exit 2;
 fi
 mkdir -p "$root"
