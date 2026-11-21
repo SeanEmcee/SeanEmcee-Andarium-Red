@@ -9,8 +9,8 @@ if [[ "$GITHUB_ACTIONS" != true || "$RUNNER_OS" != Linux ||
   exit 2
 fi
 gib="$1"
-if [[ "$gib" != 6 && "$gib" != 1 ]]; then
-  echo "ERROR: supported verified sizes are 1 GiB probe or 6 GiB hosted build" >&2
+if [[ "$gib" != 16 && "$gib" != 6 && "$gib" != 1 ]]; then
+  echo "ERROR: supported sizes are 1 GiB probe, 6 GiB validated, or 16 GiB experimental" >&2
   exit 2
 fi
 if [[ ! -e /sys/class/zram-control/hot_add ]]; then

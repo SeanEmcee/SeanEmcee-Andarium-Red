@@ -1,0 +1,1 @@
+On a disposable independent free GitHub Ubuntu runner, test 16 GiB virtual ZRAM lz4 swap allocation and activation, without touching Android sources or initiating an AOSP build. This does not mean 16 GiB more physical RAM and must not be presumed successful until proof.
