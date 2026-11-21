@@ -1,0 +1,30 @@
+name: Andarium Red - complete early build preflight
+on:
+  push:
+    branches: [feature/andd-memory-tuning]
+    paths:
+      - 'build-requests/andarium-full-preflight-*.txt'
+permissions:
+  contents: read
+jobs:
+  verify-all-early-failures:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check every Python, shell, Android XML, Java and source unit test
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/preflight_all_android17_sources.sh
+          bash scripts/preflight_all_android17_sources.sh 2>&1 | tee preflight-complete.log
+          echo 'Passed complete pre-build source/guest checks' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: andarium-full-preflight-diagnostics
+          path: preflight-complete.log
+          retention-days: 14
+          if-no-files-found: warn

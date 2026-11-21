@@ -1,0 +1,1 @@
+Run exhaustive available local build-time syntax, Java/Android SDK, AndroidManifest/resource XML, product Android.bp, Soong host-instrumentation, Kernarium verifier-order, pinned Repo source checkpoint, and all Python unittest source regressions on a separate free GitHub runner. Do not download 1200 AOSP repos or compile a guest image in this test.
