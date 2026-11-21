@@ -174,7 +174,7 @@ public final class RedPanelActivity extends Activity {
         setting("Guest network & internet", "Virtual Wi-Fi adapter routes through the iOS host",
             Settings.ACTION_WIRELESS_SETTINGS);
         setting("Apps", "Installed apps, defaults and permissions", Settings.ACTION_APPLICATION_SETTINGS);
-        setting("Notifications", "App alerts and notifications", Settings.ACTION_NOTIFICATION_SETTINGS);
+        setting("Notifications", "App alerts and notifications", Settings.ACTION_ALL_APPS_NOTIFICATION_SETTINGS);
         setting("Display", "Display resolution, brightness and theme", Settings.ACTION_DISPLAY_SETTINGS);
         setting("Storage", "Guest filesystem and free space", Settings.ACTION_INTERNAL_STORAGE_SETTINGS);
         setting("Privacy", "Android app permissions", Settings.ACTION_PRIVACY_SETTINGS);

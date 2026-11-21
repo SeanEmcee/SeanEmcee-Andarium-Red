@@ -348,7 +348,7 @@ public final class MainActivity extends Activity {
         if (y>=426 && y<=1200) {
             String[] actions = {
                 Settings.ACTION_WIRELESS_SETTINGS, Settings.ACTION_APPLICATION_SETTINGS,
-                Settings.ACTION_NOTIFICATION_SETTINGS, Settings.ACTION_DISPLAY_SETTINGS,
+                Settings.ACTION_ALL_APPS_NOTIFICATION_SETTINGS, Settings.ACTION_DISPLAY_SETTINGS,
                 Settings.ACTION_INTERNAL_STORAGE_SETTINGS, Settings.ACTION_PRIVACY_SETTINGS,
                 Settings.ACTION_SECURITY_SETTINGS, Settings.ACTION_SYNC_SETTINGS,
                 Settings.ACTION_ACCESSIBILITY_SETTINGS, Settings.ACTION_SETTINGS,

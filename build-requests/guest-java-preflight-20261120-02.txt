@@ -1,0 +1,1 @@
+Rerun full Android SDK compilation for all guest Java sources after replacing missing Settings.ACTION_NOTIFICATION_SETTINGS with supported ACTION_ALL_APPS_NOTIFICATION_SETTINGS in MainActivity and RedPanelActivity. Validate manifests. Do not execute full Android Repo sync.
