@@ -14,10 +14,24 @@ TARGET_IMPORT = '\t"runtime"\n\t"runtime/debug"\n'
 SOURCE_MAIN = "func main() {\n\tflag.Parse()\n"
 TARGET_MAIN = """func main() {
     // Build-host-only memory controls. Ninja env -i otherwise drops GOMEMLIMIT.
-    debug.SetMemoryLimit(4608 * 1024 * 1024)
-    debug.SetGCPercent(8)
+    debug.SetMemoryLimit(6 * 1024 * 1024 * 1024)
+    debug.SetGCPercent(20)
     runtime.GOMAXPROCS(1)
-    fmt.Fprintln(os.Stderr, "ANDARIUM_SOONG_RUNTIME_LIMIT_ACTIVE: GoLimit=4.5GiB GOGC=8 GOMAXPROCS=1")
+    fmt.Fprintln(os.Stderr, "ANDARIUM_SOONG_RUNTIME_LIMIT_ACTIVE: GoLimit=6GiB GOGC=20 GOMAXPROCS=1")
+    // Every minute expose actual Go heap and collection pressure in the
+    // crash-persisted GitHub compiler log. The pinned Soong code already
+    // imports runtime, time, fmt and os; the guest image is unchanged.
+    go func() {
+        tick := time.NewTicker(60 * time.Second)
+        defer tick.Stop()
+        for range tick.C {
+            var m runtime.MemStats
+            runtime.ReadMemStats(&m)
+            fmt.Fprintf(os.Stderr, "ANDARIUM_SOONG_GO_STATS heapAllocMiB=%d heapSysMiB=%d sysMiB=%d totalAllocMiB=%d numGC=%d goroutines=%d\\n",
+                m.HeapAlloc/1048576, m.HeapSys/1048576, m.Sys/1048576,
+                m.TotalAlloc/1048576, m.NumGC, runtime.NumGoroutine())
+        }
+    }()
     flag.Parse()
 """
 
@@ -51,7 +65,7 @@ def main():
             "Pinned Soong commit: " + git(repo, "rev-parse", "HEAD").stdout.decode().strip()
             + "\nOriginal SHA256: " + hashlib.sha256(original).hexdigest()
             + "\nInstrumentation SHA256: " + hashlib.sha256(patched_text.encode()).hexdigest()
-            + "\nHost-only runtime limits: Go 4.5GiB, GC 8%, GOMAXPROCS=1\n",
+            + "\nHost-only runtime limits: Go 6GiB, GC 20%, GOMAXPROCS=1\n",
             encoding="utf-8")
         print("ANDARIUM_SOONG_HOST_SOURCE_INSTRUMENTED")
         print(opts.audit.read_text(encoding="utf-8"))

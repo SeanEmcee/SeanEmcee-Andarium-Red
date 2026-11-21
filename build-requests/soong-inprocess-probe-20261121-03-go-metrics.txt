@@ -1,0 +1,1 @@
+Verify real fixture compiled Go Soong host binary with GoLimit 6 GiB, GC percent 20, 60s runtime heap/GC diagnostic ticker, source pinned integrity, exact restore. No AOSP source sync or guest build in probe.

@@ -13,7 +13,7 @@ with tempfile.TemporaryDirectory() as temp:
     repo = root / "build/soong"
     main = repo / "cmd/soong_build/main.go"
     main.parent.mkdir(parents=True)
-    main.write_text('package main\nimport (\n\t"flag"\n\t"fmt"\n\t"os"\n\t"runtime"\n)\n'
+    main.write_text('package main\nimport (\n\t"flag"\n\t"fmt"\n\t"os"\n\t"runtime"\n\t"time"\n)\n'
                     'func main() {\n\tflag.Parse()\n\tfmt.Println("OK")\n}\n', encoding="utf-8")
     cmd("git", "-C", str(repo), "init", "-q")
     cmd("git", "-C", str(repo), "add", ".")
@@ -21,9 +21,11 @@ with tempfile.TemporaryDirectory() as temp:
     original = main.read_bytes()
     cmd(sys.executable, str(patcher), "apply", "--workspace", str(root), "--audit", str(root/"audit.txt"))
     current = main.read_text()
-    assert "debug.SetMemoryLimit(4608 * 1024 * 1024)" in current
-    assert "debug.SetGCPercent(8)" in current
+    assert "debug.SetMemoryLimit(6 * 1024 * 1024 * 1024)" in current
+    assert "debug.SetGCPercent(20)" in current
     assert "runtime.GOMAXPROCS(1)" in current
+    assert "ANDARIUM_SOONG_GO_STATS" in current
+    assert "time.NewTicker(60 * time.Second)" in current
     assert (root/"audit.txt").is_file()
     if subprocess.run(["which", "go"], capture_output=True).returncode == 0:
         result = cmd("go", "run", str(main))
