@@ -1,0 +1,1 @@
+Retest the current resilient self-hosted Linux x64 Android17 builder workflow after fixing unset environment-variable guard and persistent proof artifact path. This is a cheap Bash syntax and source contract test only, NOT a compiled Android system image.
