@@ -1,0 +1,1 @@
+Cancel only superseded run #44860535715 whose Soong process received SIGTERM with near-exhausted RAM and swap. It does not include the tested Java action fixes or 6GiB compressed swap. Keep all immutable kernel, Kernarium, accessibility and Git-object cache keys intact. Do not cancel any newer run.

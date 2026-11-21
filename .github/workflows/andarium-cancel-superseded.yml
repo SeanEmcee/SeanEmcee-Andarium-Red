@@ -12,14 +12,14 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Cancel only superseded run #44762154864
+      - name: Cancel only superseded run #44860535715
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         shell: bash
         run: |
           set -euo pipefail
-          obsolete=44762154864
+          obsolete=44860535715
           state="$(gh api "repos/$GH_REPO/actions/runs/$obsolete" --jq .status)"
           if [[ "$state" == completed ]]; then
             echo "Run #$obsolete already completed; nothing to cancel" >> "$GITHUB_STEP_SUMMARY"
