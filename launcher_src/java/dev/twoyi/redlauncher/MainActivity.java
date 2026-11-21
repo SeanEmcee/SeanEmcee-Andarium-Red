@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageInfo;
@@ -56,6 +57,14 @@ public final class MainActivity extends Activity {
     };
     private String androidVersion = "unknown";
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private final SharedPreferences.OnSharedPreferenceChangeListener themeObserver =
+        (preferences, key) -> {
+            if (!RedAccentStore.KEY.equals(key)) return;
+            runOnUiThread(() -> {
+                if (dashboard != null) dashboard.refresh();
+                if (skin != null) skin.invalidate();
+            });
+        };
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -79,6 +88,18 @@ public final class MainActivity extends Activity {
         super.onNewIntent(intent);
         setIntent(intent);
         if (RedAccentStore.acceptLaunchAccent(this, intent) && dashboard != null) dashboard.refresh();
+    }
+
+    @Override protected void onStart() {
+        super.onStart();
+        getSharedPreferences(RedAccentStore.PREFS, MODE_PRIVATE)
+            .registerOnSharedPreferenceChangeListener(themeObserver);
+    }
+
+    @Override protected void onStop() {
+        getSharedPreferences(RedAccentStore.PREFS, MODE_PRIVATE)
+            .unregisterOnSharedPreferenceChangeListener(themeObserver);
+        super.onStop();
     }
 
     @Override protected void onResume() {
@@ -128,6 +149,7 @@ public final class MainActivity extends Activity {
     @Override public void onConfigurationChanged(Configuration c) {
         super.onConfigurationChanged(c);
         if (skin != null) skin.invalidate();
+        if (dashboard != null) dashboard.refresh();
     }
 
     private final class SkinView extends View {
@@ -322,19 +344,30 @@ public final class MainActivity extends Activity {
     private List<LauncherCatalog.App> launchableApps() {
         PackageManager pm = getPackageManager();
         List<LauncherCatalog.App> apps = new ArrayList<>();
-        for (ApplicationInfo info : pm.getInstalledApplications(0)) {
-            if (getPackageName().equals(info.packageName)) continue;
-            if (pm.getLaunchIntentForPackage(info.packageName) == null) continue;
-            apps.add(new LauncherCatalog.App(pm.getApplicationLabel(info).toString(), info.packageName));
+        try {
+            for (ApplicationInfo info : pm.getInstalledApplications(0)) {
+                if (getPackageName().equals(info.packageName)) continue;
+                try {
+                    if (pm.getLaunchIntentForPackage(info.packageName) == null) continue;
+                    apps.add(new LauncherCatalog.App(pm.getApplicationLabel(info).toString(), info.packageName));
+                } catch (SecurityException denied) {
+                    // Do not crash the home screen if a guest policy hides one app.
+                }
+            }
+        } catch (SecurityException denied) {
+            // An unprivileged/partially installed guest may restrict package scans.
         }
         return apps;
     }
 
     private void openPackage(String packageName) {
-        Intent launch = getPackageManager().getLaunchIntentForPackage(packageName);
-        if (launch == null) { toast("This app is not installed or cannot be launched"); return; }
-        try { startActivity(launch); }
-        catch (ActivityNotFoundException error) { toast("Android could not open that app"); }
+        try {
+            Intent launch = getPackageManager().getLaunchIntentForPackage(packageName);
+            if (launch == null) { toast("This app is not installed or cannot be launched"); return; }
+            startActivity(launch);
+        } catch (ActivityNotFoundException | SecurityException error) {
+            toast("Android cannot open that app under the current guest permissions");
+        }
     }
 
     /** Real app drawer; shows only installed, launchable Android applications. */
@@ -364,7 +397,7 @@ public final class MainActivity extends Activity {
 
     private boolean packageInstalled(String name) {
         try { getPackageManager().getPackageInfo(name, 0); return true; }
-        catch (PackageManager.NameNotFoundException notInstalled) { return false; }
+        catch (PackageManager.NameNotFoundException | SecurityException notInstalled) { return false; }
     }
 
     void openRedAppDrawer() { showAppDrawer(""); }
@@ -432,12 +465,14 @@ public final class MainActivity extends Activity {
     private void openDocuments() {
         try { Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT); i.setType("*/*");
               i.addCategory(Intent.CATEGORY_OPENABLE); startActivity(i); }
-        catch(ActivityNotFoundException ex) { toast("Guest file picker unavailable"); }
+        catch(ActivityNotFoundException | SecurityException ex) {
+            toast("Guest file picker unavailable or restricted");
+        }
     }
     private void safeAction(String action) {
         try { Intent i=new Intent(action);
             startActivity(i);
-        } catch(ActivityNotFoundException ex) { safeActionFallback(); }
+        } catch(ActivityNotFoundException | SecurityException ex) { safeActionFallback(); }
     }
     private void safeActionFallback() {
         try {startActivity(new Intent(Settings.ACTION_SETTINGS));}

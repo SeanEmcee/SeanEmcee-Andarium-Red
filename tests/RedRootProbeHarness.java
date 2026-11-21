@@ -4,7 +4,14 @@ public final class RedRootProbeHarness {
     private static void check(boolean ok, String message) {
         if (!ok) throw new AssertionError(message);
     }
-    public static void main(String[] ignored) {
+    public static void main(String[] args) throws Exception {
+        if (args.length > 0) {
+            if ("short".equals(args[0])) { System.out.println("0"); return; }
+            if ("flood".equals(args[0])) {
+                for (int i = 0; i < 200000; i++) System.out.print('x');
+                return;
+            }
+        }
         RedRootProbe.Result missing = RedRootProbe.check(argv -> { throw new java.io.IOException("missing su"); });
         check(!missing.root && !missing.magisk, "missing su cannot imply root");
         RedRootProbe.Result denied = RedRootProbe.check(argv -> new RedRootProbe.CommandResult(1, "0"));
@@ -29,6 +36,21 @@ public final class RedRootProbeHarness {
             return new RedRootProbe.CommandResult(0, "31.1;evil");
         });
         check(malicious.root && !malicious.magisk, "reject unexpected output");
-        System.out.println("RED_ROOT_PROBE_7_PASS");
+        // Exercise the actual ProcessBuilder runner, not only Runner mocks.
+        String javaExecutable = java.nio.file.Paths.get(
+            System.getProperty("java.home"), "bin", "java").toString();
+        String harness = RedRootProbeHarness.class.getName();
+        String classpath = System.getProperty("java.class.path");
+        RedRootProbe.CommandResult normal = RedRootProbe.PROCESS_RUNNER.run(
+            javaExecutable, "-cp", classpath, harness, "short");
+        check(normal.exit == 0 && "0".equals(normal.output.trim()),
+              "real subprocess output must be captured");
+        RedRootProbe.CommandResult flood = RedRootProbe.PROCESS_RUNNER.run(
+            javaExecutable, "-cp", classpath, harness, "flood");
+        check(flood.exit == -2 && flood.output.length() < 100,
+              "large output must drain and fail closed without deadlock");
+        check(!RedRootProbe.check(argv -> flood).root,
+              "oversized subprocess output cannot imply root");
+        System.out.println("RED_ROOT_PROBE_10_PASS");
     }
 }

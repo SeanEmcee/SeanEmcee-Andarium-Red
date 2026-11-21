@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.ActivityNotFoundException;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -36,6 +37,25 @@ public final class RedPanelActivity extends Activity {
     private static final String TITANIUM_PACKAGE = "io.github.jqssun.helium";
 
     private LinearLayout content;
+    private EditText browserAddress;
+    private String pendingBrowserAddress = "";
+    private final SharedPreferences.OnSharedPreferenceChangeListener themeObserver =
+        (preferences, key) -> {
+            if (!RedAccentStore.KEY.equals(key)) return;
+            runOnUiThread(() -> {
+                int next = RedAccentStore.color(RedAccentStore.load(this));
+                if (next == accent || content == null) return;
+                accent = next;
+                // Theme updates should not discard the URL a person is typing.
+                if (BROWSER_PANEL.equals(getIntent().getStringExtra(EXTRA_PANEL)) &&
+                    browserAddress != null) {
+                    pendingBrowserAddress = browserAddress.getText().toString();
+                }
+                content.removeAllViews();
+                if (BROWSER_PANEL.equals(getIntent().getStringExtra(EXTRA_PANEL))) buildBrowser();
+                else buildSettings();
+            });
+        };
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -53,6 +73,18 @@ public final class RedPanelActivity extends Activity {
         setContentView(scroll);
         if (BROWSER_PANEL.equals(getIntent().getStringExtra(EXTRA_PANEL))) buildBrowser();
         else buildSettings();
+    }
+
+    @Override protected void onStart() {
+        super.onStart();
+        getSharedPreferences(RedAccentStore.PREFS, MODE_PRIVATE)
+            .registerOnSharedPreferenceChangeListener(themeObserver);
+    }
+
+    @Override protected void onStop() {
+        getSharedPreferences(RedAccentStore.PREFS, MODE_PRIVATE)
+            .unregisterOnSharedPreferenceChangeListener(themeObserver);
+        super.onStop();
     }
 
     private int dp(float value) { return (int) (getResources().getDisplayMetrics().density * value + 0.5f); }
@@ -111,22 +143,27 @@ public final class RedPanelActivity extends Activity {
 
     private void openSetting(String action) {
         try { startActivity(new Intent(action)); }
-        catch (ActivityNotFoundException e) {
+        catch (ActivityNotFoundException | SecurityException e) {
             try { startActivity(new Intent(Settings.ACTION_SETTINGS)); }
-            catch (ActivityNotFoundException ignored) { toast("Setting unavailable on this guest"); }
+            catch (ActivityNotFoundException | SecurityException ignored) {
+                toast("Setting unavailable or restricted on this guest");
+            }
         }
     }
 
     private boolean isInstalled(String packageName) {
         try { getPackageManager().getPackageInfo(packageName, 0); return true; }
-        catch (PackageManager.NameNotFoundException absent) { return false; }
+        catch (PackageManager.NameNotFoundException | SecurityException absent) { return false; }
     }
 
     private void openApp(String packageName) {
-        Intent intent = getPackageManager().getLaunchIntentForPackage(packageName);
-        if (intent == null) { toast("Install this app inside Android first"); return; }
-        try { startActivity(intent); }
-        catch (ActivityNotFoundException e) { toast("This Android app could not be opened"); }
+        try {
+            Intent intent = getPackageManager().getLaunchIntentForPackage(packageName);
+            if (intent == null) { toast("Install this app inside Android first"); return; }
+            startActivity(intent);
+        } catch (ActivityNotFoundException | SecurityException e) {
+            toast("This Android app is unavailable or restricted");
+        }
     }
 
     private void buildSettings() {
@@ -166,7 +203,9 @@ public final class RedPanelActivity extends Activity {
     private void buildBrowser() {
         top("Titanium Browser", "Real Chromium tabs and extensions live in Titanium, not in a screenshot.");
         EditText address = new EditText(this);
+        browserAddress = address;
         address.setSingleLine(true);
+        address.setText(pendingBrowserAddress);
         address.setTextColor(Color.WHITE);
         address.setHintTextColor(SECONDARY);
         address.setHint("https://example.org");
@@ -188,10 +227,12 @@ public final class RedPanelActivity extends Activity {
         Intent view = new Intent(Intent.ACTION_VIEW, uri);
         if (isInstalled(TITANIUM_PACKAGE)) view.setPackage(TITANIUM_PACKAGE);
         try { startActivity(view); }
-        catch (ActivityNotFoundException e) {
+        catch (ActivityNotFoundException | SecurityException e) {
             view.setPackage(null);
             try { startActivity(view); }
-            catch (ActivityNotFoundException ignored) { toast("No browser in this guest can open the URL"); }
+            catch (ActivityNotFoundException | SecurityException ignored) {
+                toast("No permitted browser in this guest can open the URL");
+            }
         }
     }
 

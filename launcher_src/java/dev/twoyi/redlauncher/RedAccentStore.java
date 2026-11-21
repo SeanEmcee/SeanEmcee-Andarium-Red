@@ -12,9 +12,9 @@ import android.graphics.Color;
  */
 final class RedAccentStore {
     static final String EXTRA_RGB = "dev.twoyi.redlauncher.NEXARIS_ACCENT_RGB";
-    static final int DEFAULT_RGB = 0xF43447;
-    private static final String PREFS = "andarium_red_theme";
-    private static final String KEY = "nexaris_accent_rgb";
+    static final int DEFAULT_RGB = 0xF22B43;
+    static final String PREFS = "andarium_red_theme";
+    static final String KEY = "nexaris_accent_rgb";
 
     private RedAccentStore() {}
 
@@ -29,11 +29,15 @@ final class RedAccentStore {
     static boolean acceptLaunchAccent(Context context, Intent intent) {
         if (intent == null || !intent.hasExtra(EXTRA_RGB)) return false;
         final int color = intent.getIntExtra(EXTRA_RGB, -1);
-        if (!validRGB(color)) return false;
+        return acceptRGB(context, color);
+    }
+
+    static boolean acceptRGB(Context context, int color) {
+        if (context == null || !validRGB(color)) return false;
+        // Do not acknowledge a theme change until it is durably saved.
+        // commit() avoids losing the update if the guest shuts down immediately.
         SharedPreferences.Editor editor = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit();
-        editor.putInt(KEY, color);
-        editor.apply();
-        return true;
+        return editor.putInt(KEY, color).commit();
     }
 
     static int color(int rgb) {

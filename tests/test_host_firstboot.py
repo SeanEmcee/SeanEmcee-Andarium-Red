@@ -183,6 +183,45 @@ final class LiveRuntime {
             self.assertIn('TwoyiRedLauncher.apk',project.read_text())
             self.assertFalse(outcome['guest_root_enabled'])
 
+    def test_launcher_pin_updates_are_repeatable_and_keep_marker(self):
+        starting = (BASE / 'host/RedGuestApkInstaller.swift').read_text()
+        a = {'bytes': 3456, 'sha256': 'a' * 64}
+        once = first.pin_launcher_in_swift(starting, a)
+        self.assertEqual(once.count('Package(filename: "TwoyiRedLauncher.apk"'), 1)
+        self.assertIn('// RED_CUSTOM_PACKAGES', once)
+        self.assertEqual(first.pin_launcher_in_swift(once, a), once)
+        new = {'bytes': 7890, 'sha256': 'b' * 64}
+        updated = first.pin_launcher_in_swift(once, new)
+        self.assertEqual(updated.count('Package(filename: "TwoyiRedLauncher.apk"'), 1)
+        self.assertIn('expectedBytes: 7890', updated)
+        self.assertIn('expectedSHA256: "' + 'b' * 64 + '"', updated)
+        self.assertNotIn('expectedBytes: 3456', updated)
+        self.assertIn('// RED_CUSTOM_PACKAGES', updated)
+
+    def test_launcher_pin_repairs_old_staged_source_without_marker(self):
+        starting = (BASE / 'host/RedGuestApkInstaller.swift').read_text()
+        meta = {'bytes': 3456, 'sha256': 'a' * 64}
+        old = first.pin_launcher_in_swift(starting, meta)
+        old = old.replace('        // RED_CUSTOM_PACKAGES', '')
+        repaired = first.pin_launcher_in_swift(old, meta)
+        self.assertEqual(repaired.count('Package(filename: "TwoyiRedLauncher.apk"'), 1)
+        self.assertEqual(repaired.count('// RED_CUSTOM_PACKAGES'), 1)
+
+    def test_launcher_pin_rejects_duplicated_entries(self):
+        starting = (BASE / 'host/RedGuestApkInstaller.swift').read_text()
+        meta = {'bytes': 3456, 'sha256': 'a' * 64}
+        pinned = first.pin_launcher_in_swift(starting, meta)
+        entry = pinned.split('        // RED_CUSTOM_PACKAGES', 1)[0].split(
+            '        Package(filename: "TwoyiRedLauncher.apk"', 1
+        )[1].split('),', 1)[0]
+        duplicate = ('        Package(filename: "TwoyiRedLauncher.apk"' +
+                     entry + '),')
+        with self.assertRaisesRegex(ValueError, 'Duplicate launcher'):
+            first.pin_launcher_in_swift(pinned.replace(
+                '        // RED_CUSTOM_PACKAGES',
+                duplicate + '\n        // RED_CUSTOM_PACKAGES'
+            ), meta)
+
     def test_reject_incomplete_launcher_fixture(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp);self.prep(root)

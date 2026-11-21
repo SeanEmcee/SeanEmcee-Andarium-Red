@@ -163,6 +163,50 @@ def inspect(root: Path = ROOT, kernarium: Path | None = None) -> dict:
         and 'RedAccentStore.load(this)' in native_panel
         and 'RedAccentStore.acceptLaunchAccent(this, getIntent())' in launcher,
         'Guest remembers 24-bit RGB sent on launch; Nexaris host-to-guest runtime adapter still needs actual integration')
+    theme_provider = (root / 'launcher_src/java/dev/twoyi/redlauncher/RedThemeProvider.java').read_text()
+    theme_host = (root / 'host/RedGuestAccentTransport.swift').read_text()
+    add('Shell-only non-disruptive native Android RGB theme bridge with readback',
+        'android.permission.DUMP' in manifest
+        and 'Binder.getCallingUid()' in theme_provider
+        and 'Process.SHELL_UID' in theme_provider
+        and 'RedAccentStore.acceptRGB' in theme_provider
+        and 'editor.putInt(KEY, color).commit()' in accent_source
+        and 'RedGuestAccentTransport.verifyRead(' in make
+        and 'static func verifyRead(' in theme_host
+        and 'registerOnSharedPreferenceChangeListener(themeObserver)' in launcher
+        and 'registerOnSharedPreferenceChangeListener(themeObserver)' in native_panel,
+        'Source-only host-to-guest RGB transport and persisted readback; actual Android 17 compilation and runtime integration still required')
+    grid_logic = (root / 'launcher_src/java/dev/twoyi/redlauncher/DashboardGridPolicy.java').read_text()
+    host_accent_state = (root / 'host/RedHostAccentState.swift').read_text()
+    host_clipboard_controls = (root / 'host/RedClipboardControls.swift').read_text()
+    add('Host clipboard chrome tracks verified Nexaris theme RGB',
+        'RedHostAccentState.shared.acceptVerified(rgb)' in make
+        and 'RedGuestAccentTransport.verifyRead(' in make
+        and 'RedHostAccentState.swift' in make
+        and '@ObservedObject private var accentState' in host_clipboard_controls
+        and '.foregroundStyle(accentState.color)' in host_clipboard_controls
+        and 'guard selected <= 0x00FF_FFFF' in host_accent_state,
+        'Host-side source wired to confirmed guest RGB; live iOS SwiftUI rendering untested')
+    add('Native Android HOME grid adapts to narrow viewports',
+        'DashboardGridPolicy.columns(available, dp(80))' in native_home
+        and 'DashboardGridPolicy.cellWidth(available, dp(80))' in native_home
+        and 'Math.min(4, availablePixels / desiredCellPixels)' in grid_logic
+        and 'if (dashboard != null) dashboard.refresh()' in launcher,
+        'Responsive widget grid source; 2,006 arithmetic assertions pass locally; real Android appearance untested')
+    prepare_embed = (root / 'tools/prepare_embedded_kernarium.py').read_text()
+    add('Opt-in upstream Andarium @main guard preserves the actual engine model',
+        'def prepare(source: str)' in prepare_embed
+        and 'final class AndariumProcess' in prepare_embed
+        and 'NEXARIS_EMBEDDED_ANDARIUM' in prepare_embed
+        and 'apply: bool = False' in prepare_embed,
+        'Version-gated, idempotent source preparation; full Nexaris engine linkage and IPA remain unverified')
+    add('Two-stage guest data persistence acceptance is available',
+        'def create_persistence_marker(adb: str)' in live_check
+        and 'def verify_persistence_marker(adb: str, expected: str)' in live_check
+        and 'PERSISTENCE_TOKEN.fullmatch(expected)' in live_check
+        and '--create-persistence-marker' in live_check
+        and '--check-persistence-marker' in live_check,
+        'Opt-in marker source and mocked tests; persistence through actual iOS relaunch/update/7 days unverified')
     add('Explicit clipboard signature permission check',
         'def clipboard_privilege(' in live_check
         and 'READ_CLIPBOARD_IN_BACKGROUND' in live_check,
@@ -277,6 +321,8 @@ def main() -> None:
     p.add_argument('--kernarium', type=Path)
     p.add_argument('--report', type=Path)
     p.add_argument('--require-release-go', action='store_true')
+    p.add_argument('--require-source-ready', action='store_true',
+                   help='Exit nonzero if any source gate is missing, without requiring device acceptance')
     args = p.parse_args()
     report = inspect(ROOT, args.kernarium)
     output = json.dumps(report, indent=2) + '\n'
@@ -285,6 +331,8 @@ def main() -> None:
     print(output)
     if args.require_release_go and report['release_gate'] != 'GO':
         sys.exit(2)
+    if args.require_source_ready and report['source_checks_passed'] != report['source_checks_total']:
+        sys.exit(1)
 
 
 if __name__ == '__main__':

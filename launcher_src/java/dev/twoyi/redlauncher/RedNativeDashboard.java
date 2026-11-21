@@ -170,10 +170,12 @@ final class RedNativeDashboard extends ScrollView {
         content.addView(search, sp);
 
         GridLayout grid = new GridLayout(owner);
-        grid.setColumnCount(4);
-        // Each cell uses the actual screen width; the GridLayout is not a bitmap.
-        int width = getResources().getDisplayMetrics().widthPixels;
-        int cell = Math.max(dp(65), (width - dp(30)) / 4);
+        // Fit real Android guest widths rather than forcing a clipped four-column
+        // grid on small/split viewports. The HOME remains Android-native.
+        int available = Math.max(1, getResources().getDisplayMetrics().widthPixels - dp(30));
+        int columns = DashboardGridPolicy.columns(available, dp(80));
+        int cell = DashboardGridPolicy.cellWidth(available, dp(80));
+        grid.setColumnCount(columns);
         for (Tile tile : APPS) {
             LinearLayout card = new LinearLayout(owner);
             card.setOrientation(LinearLayout.VERTICAL);
@@ -186,7 +188,7 @@ final class RedNativeDashboard extends ScrollView {
             Drawable drawable = null;
             if (available) {
                 try { drawable = owner.getPackageManager().getApplicationIcon(tile.packageName); }
-                catch (PackageManager.NameNotFoundException ignored) { available = false; }
+                catch (PackageManager.NameNotFoundException | SecurityException ignored) { available = false; }
             }
             if (drawable != null) icon.setImageDrawable(drawable);
             else {
@@ -246,7 +248,7 @@ final class RedNativeDashboard extends ScrollView {
 
     private boolean appAvailable(String packageName) {
         try { owner.getPackageManager().getPackageInfo(packageName, 0); return true; }
-        catch (PackageManager.NameNotFoundException absent) { return false; }
+        catch (PackageManager.NameNotFoundException | SecurityException absent) { return false; }
     }
 
     private String readBattery() {
@@ -259,14 +261,15 @@ final class RedNativeDashboard extends ScrollView {
     }
 
     private void openPackage(String packageName, String label) {
-        Intent launch = owner.getPackageManager().getLaunchIntentForPackage(packageName);
-        if (launch == null) {
-            Toast.makeText(owner, label + " is not installed or cannot be launched", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        try { owner.startActivity(launch); }
-        catch (ActivityNotFoundException absent) {
-            Toast.makeText(owner, label + " cannot be opened", Toast.LENGTH_SHORT).show();
+        try {
+            Intent launch = owner.getPackageManager().getLaunchIntentForPackage(packageName);
+            if (launch == null) {
+                Toast.makeText(owner, label + " is not installed or cannot be launched", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            owner.startActivity(launch);
+        } catch (ActivityNotFoundException | SecurityException denied) {
+            Toast.makeText(owner, label + " cannot be opened under guest permissions", Toast.LENGTH_SHORT).show();
         }
     }
 

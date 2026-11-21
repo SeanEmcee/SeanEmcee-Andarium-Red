@@ -1,3 +1,111 @@
+# Andarium Red v18 — real embedding preparation and broken-check repair
+
+**Functional release gate: NO-GO.** No Android image, iOS IPA or real iPhone runtime has been built or validated in this source-only iteration.
+
+- Repaired the accidentally duplicated/corrupted `tools/verify_guest.py` source so each live-verifier function and CLI entrypoint appears once.
+- Repaired a literal escaped newline in the Java `SharedPreferences` mock which would have broken compilation.
+- Added `tools/python_syntax_gate.py`: syntax-checks every repository Python file and verifies required live-verifier methods and exactly one CLI entrypoint. This runs first in `tools/prebuild_validate_v16.py`.
+- Added `tools/prepare_embedded_kernarium.py`, an explicit opt-in, idempotent edit to the upstream Andarium `@main` app delegate. It keeps upstream `AndariumProcess` and the live `RootView` available for the combined Nexaris target.
+- The Nexaris feature branch adds a real type-referencing `AndariumProcess`/`AppModel`/`LiveRuntime` adapter, but compiles it only with `NEXARIS_EMBEDDED_ANDARIUM` after the genuine upstream engine is included. Android guest startup and Metal display are still untested.
+- A separate `Nexaris/project.andarium.yml` flavor specifies iOS 27.0, Xcode 27.2, source/package/framework inputs, an independent privacy plist, and a combined runtime bridging header. Normal Nexaris remains on its original project configuration.
+- No GitHub Actions jobs or app builds were executed.
+
+Offline prebuild check (source/tests only):
+
+```sh
+python3 tools/prebuild_validate_v16.py --report prebuild-v18-local.json
+```
+
+The runtime itself is still the decisive blocker. Passing this check does not make a guest image, accepted AOT artifact, root daemon, Google services integration, signed IPA, or verified 100% parity.
+
+---
+
+# Andarium Red v17 — pre-build hardening and acceptance tooling
+
+**Release still NO-GO:** Source-level improvements are committed and selective Java/Swift harnesses were exercised locally. No full Android image, iOS IPA, device boot, genuine Magisk root, native AOT benchmark, or 7-day persistence run exists yet.
+
+## v17 source improvements
+
+- **Responsive Android HOME:** Changed the launcher from a forced four-column app grid to a width-aware one-to-four-column layout. The isolated grid logic compiled and passed **2,006 local Java assertions**, including edge widths.
+- **Screen continuity:** The Android Settings/browser view now preserves an in-progress browser URL when the Nexaris-selected accent changes. Restricted package-manager lookups fail gracefully rather than crashing.
+- **Verified host control colors:** The iOS host clipboard overlay is no longer hardcoded red. It adopts the RGB that Android confirmed through an authenticated ADB write/readback, with source-only tests. This is not yet compiled into a Nexaris IPA.
+- **Pre-build source gate:** `--require-source-ready` makes a missing source requirement exit nonzero. The offline validator invokes it and explicitly labels `--only` filtered runs as incomplete coverage.
+- **Guest persistence testing:** Added opt-in create/verify token commands for checking the guest data disk across actual restarts, app updates, and elapsed time. The marker is never treated as runtime evidence until verified in a real Android guest.
+- **Nexaris status colors:** Native Nexaris Andarium development screen now shows source-implemented areas in green and keeps the engine/Android boot unverified until real driver evidence exists.
+
+Run the offline source checks (not an IPA or Android image build):
+
+```sh
+python3 tools/prebuild_validate_v16.py --report prebuild-source-v17.json
+```
+
+After a real Android guest is running, the two-stage persistence acceptance can be done explicitly:
+
+```sh
+python3 tools/verify_guest.py --create-persistence-marker
+# Save the 32-character token from the check result, restart/update the actual guest
+python3 tools/verify_guest.py --check-persistence-marker <saved-32-character-token>
+```
+
+Do not run the second step until a guest restart/update has actually occurred; retest again after seven days for long-term persistence. Neither the above tooling nor a green source report is a substitute for functional device parity.
+
+---
+
+# Andarium Red v16 — non-disruptive Android theme handoff and offline pre-build gate
+
+**Release: NO-GO.** The private source branch now contains a local, shell-authorized Android theme provider with a Swift write-and-readback transport. This does not boot Android 17, connect the real Nexaris runtime adapter, establish Magisk root, or prove visual parity. No GitHub Actions, Android image build, or signed IPA build has been run.
+
+## Source improvements in v16
+
+- The native Android launcher includes an exported `RedThemeProvider` protected by Android's `DUMP` permission and a shell/root UID check. Only an authorized guest ADB command can call it; no network service or external listener is introduced.
+- Theme updates validate 24-bit RGB, commit the preference before acknowledging success, and provide an exact readback field. The iOS host now sends `content call` set/get commands instead of forcing the Android launcher into the foreground.
+- Native HOME and Settings/browser screens register change listeners while visible, update their color when the preference changes, and unregister on stop to avoid retaining dead screens.
+- The Swift protocol checker was compiled and exercised locally with **17 assertions**. An isolated Java provider implementation was stub-compiled and exercised locally; the complete repository's 15-assertion Java provider harness still requires running from a synced checkout.
+- `tools/prebuild_validate_v16.py` runs source tests, Java harnesses and source gates locally and writes a JSON report, while always leaving runtime release status **NO-GO**. It does not call GitHub Actions, Xcode or Gradle.
+- Nexaris's separate integration pull request serializes theme requests, coalesces fast changes, queues colors while Android is stopped, and replays them after a real guest boot. The actual runtime adapter remains unimplemented.
+
+```sh
+python3 tools/prebuild_validate_v16.py --report prebuild-v16-local.json
+```
+
+For a real, authenticated Android guest later, use the explicit, opt-in checks:
+
+```sh
+python3 tools/verify_guest.py --check-theme-provider
+python3 tools/verify_guest.py --check-theme-write
+```
+
+The read-only check does not change the guest. The write check snapshots the old color, changes one RGB bit, verifies provider persistence and restores the original only if the test color is still present. Android offers no atomic theme compare-and-swap, so a concurrent user's change is preserved on a best-effort basis. Neither command should be run before Android 17 has actually been built and booted.
+
+**Evidence caveat:** The bundled `PREBUILD_PARITY.json` and `RELEASE_STATUS.json` capture the previous **v14** baseline. Do not reuse their 139 Python passing-test count or 44/44 source-check number as a verified v16 full-suite result. A full Android 17 compilation, authenticated ADB integration, ROM boot, and iPhone acceptance remain required for actual functional parity.
+
+---
+
+# Andarium Red v15 — incremental source hardening (development branch)
+
+**Release: NO-GO.** This branch continues the v14 source handoff; it does **not** contain a completed Android image, Magisk-booted guest, working Nexaris Android runtime adapter, AOT acceptance measurement, or signed iOS app. Source changes are not a declaration of 100% functional parity. GitHub Actions and app builds have not been run.
+
+## v15 changes
+
+- **Root-check reliability:** The Java `ProcessBuilder` runner drains child stdout/stderr while the process is alive, rather than waiting first and risking a full-pipe deadlock. Output is strictly bounded to 1 KiB, overflow is rejected, and the 15-second process timeout is preserved. An executable Java harness now covers 10 checks, including a 200 KiB child-output flood that passes locally.
+- **Crash containment:** Native Android HOME, dashboard, Settings, and browser paths handle Android security-denied app launches and settings intents with user-visible fallback messages. They do not falsely claim an unavailable app is working.
+- **Theme parity:** The guest launcher fallback color now equals Nexaris's native Crimson preset (`0xF22B43`). A separate Nexaris parity branch preserves the most recent selected RGB while no driver exists and replays the value when a genuine engine registers.
+- **Regression coverage added:** `tests/test_v15_root_process.py` and `tests/test_v15_android_intent_safety.py` exercise the Java root harness and native Android stub compilation. Full repository/Android 17/device verification has not been run from this environment.
+
+### Source verification commands (no GitHub Actions)
+
+```sh
+python3 -m unittest discover -s tests -q
+python3 tools/root_probe_java_test.py
+python3 tools/accent_store_behavior_test.py
+python3 tools/native_home_stub_compile.py
+python3 tools/android_panel_stub_compile.py
+```
+
+The original five functional acceptance targets and five additional Nexaris/stability/privacy/persistence/distribution targets remain **unverified on device**. Refer to [acceptance targets](docs/ACCEPTANCE_TARGETS.md) and the v14 baseline [release status](RELEASE_STATUS.json). The previous v14 count of 139 Python tests must not be reused as a v15 full-suite result.
+
+---
+
 # Andarium Red v14 — source continuation and Nexaris accent handoff
 
 **Release: NO-GO.** This is a complete source handoff built from the prior v13 package, not an Android image or installable IPA. No GitHub Actions, signing or iPhone build was used. [Original and expanded parity targets](docs/ACCEPTANCE_TARGETS.md) • [Private GitHub repository guidance](docs/REPOSITORY_AND_BUILD.md).
