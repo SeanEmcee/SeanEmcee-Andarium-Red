@@ -1,0 +1,29 @@
+name: Andarium Red - free runner compressed memory capability
+on:
+  push:
+    branches: [feature/andd-memory-tuning]
+    paths:
+      - 'build-requests/github-memory-compression-probe-*.txt'
+permissions:
+  contents: read
+jobs:
+  compressed-swap-probe:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Detect zswap and test 1 GiB ZRAM block swap on disposable runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/probe_github_compressed_memory.sh
+          bash scripts/probe_github_compressed_memory.sh | tee compressed-memory-result.txt
+          cat compressed-memory-result.txt >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: andarium-compressed-memory-probe
+          path: compressed-memory-result.txt
+          retention-days: 14
+          if-no-files-found: error

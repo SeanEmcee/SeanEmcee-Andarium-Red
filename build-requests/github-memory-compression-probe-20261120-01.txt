@@ -1,0 +1,1 @@
+Test disposable public GitHub Ubuntu kernel zswap or 1 GiB ZRAM to improve low-memory Android Soong compilation. Standalone probe; do not interrupt current Android build.
