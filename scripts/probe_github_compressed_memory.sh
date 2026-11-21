@@ -25,7 +25,12 @@ if [[ ! -e /sys/class/zram-control/hot_add && ! -e /sys/block/zram0/disksize ]];
   exit 0
 fi
 if [[ -e /sys/class/zram-control/hot_add ]]; then
-  devnum="$(cat /sys/class/zram-control/hot_add)"
+  # The hot_add sysfs node is root-readable; the unprivileged probe
+  # cannot allocate a new zram device using ordinary cat.
+  if ! devnum="$(sudo cat /sys/class/zram-control/hot_add)"; then
+    echo "ZRAM_HOT_ADD=not_permitted"
+    exit 0
+  fi
   dev="/dev/zram$devnum"
 else
   dev=/dev/zram0

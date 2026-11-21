@@ -1,0 +1,1 @@
+Repeat standalone Ubuntu kernel compressed memory test with sudo to read root-only /sys/class/zram-control/hot_add; check whether zram1 can become a valid swap device; do not affect running Android build.
