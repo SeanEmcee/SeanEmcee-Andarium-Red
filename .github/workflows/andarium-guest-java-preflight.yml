@@ -18,24 +18,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sdk="$(printenv ANDROID_HOME || echo /usr/local/lib/android/sdk)"
-          jar="$(find "$sdk/platforms" -maxdepth 2 -name android.jar -type f | sort -V | tail -n 1)"
-          test -n "$jar"
-          echo "PRECOMPILE_ANDROID_SDK=$jar"
-          javac -version
-          mkdir -p .build/guest-java/launcher .build/guest-java/clipboard
-          echo "Compiling guest Java sources"
-          find launcher_src/java -type f -name '*.java' -print0 |
-            xargs -0 javac -encoding UTF-8 -source 17 -target 17 -cp "$jar" \
-              -d .build/guest-java/launcher
-          find guest_clipboard/java -type f -name '*.java' -print0 |
-            xargs -0 javac -encoding UTF-8 -source 17 -target 17 -cp "$jar" \
-              -d .build/guest-java/clipboard
-          python3 -B - <<'PY'
-          import xml.etree.ElementTree as ET
-          for path in ('launcher_src/AndroidManifest.xml', 'guest_clipboard/AndroidManifest.xml'):
-              tree = ET.parse(path)
-              assert tree.getroot().tag == 'manifest', path
-              print('VALID_ANDROID_XML='+path)
-          PY
-          echo 'PASS: full guest launcher + clipboard Java source compiles against the SDK stubs' >> "$GITHUB_STEP_SUMMARY"
+          bash -n scripts/preflight_android_guest_java.sh
+          bash scripts/preflight_android_guest_java.sh
+          echo 'PASS: full guest Java source preflight against Android SDK' >> "$GITHUB_STEP_SUMMARY"

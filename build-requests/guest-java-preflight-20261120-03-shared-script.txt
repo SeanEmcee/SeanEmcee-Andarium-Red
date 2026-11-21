@@ -1,0 +1,1 @@
+Revalidate shared guest Java preflight shell script after promotion to full hosted Android17 workflow; no AOSP checkout. Tests are source-level and do not claim an Android image.

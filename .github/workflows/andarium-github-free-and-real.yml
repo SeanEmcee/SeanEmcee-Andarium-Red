@@ -113,6 +113,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Verify all guest Java files before deleting hosted Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/preflight_android_guest_java.sh
+          bash scripts/preflight_android_guest_java.sh
       - name: Reclaim disk space and enforce sufficient capacity
         shell: bash
         run: |
@@ -274,6 +280,12 @@ jobs:
         with:
           path: /home/runner/andarium-red-aosp17/.andarium-repo-seed
           key: andarium-gh-repo-object-seed-v1-fbe12ee72d195f0241c4fc24090a98b259026604-20261115-los24-r28
+      - name: Provision verified 6 GiB ZRAM compressed swap for Soong
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash -n scripts/provision_android17_zram_swap.sh
+          bash scripts/provision_android17_zram_swap.sh 6
       - name: Provision checked extra swap before Soong bootstrap
         shell: bash
         run: |
@@ -305,6 +317,13 @@ jobs:
               {
                 echo "ANDROID17_RESOURCE_SAMPLE=$(date -u +%FT%TZ)"
                 free -m || true
+                swapon --show || true
+                for stat in /sys/block/zram*/mm_stat; do
+                  if [[ -r "$stat" ]]; then
+                    echo "ZRAM_MEMORY_STAT=$stat"
+                    cat "$stat" || true
+                  fi
+                done
                 df -h "$HOME/andarium-red-aosp17" / || true
                 if [[ -r /sys/fs/cgroup/memory.events ]]; then
                   echo "CGROUP_MEMORY_EVENTS"
