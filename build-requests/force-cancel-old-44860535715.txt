@@ -1,0 +1,1 @@
+Force-cancel ONLY old Android17 run 44860535715 if still stuck in progress after standard cancellation. Its old commit 1ce856b69 compiled with nearly exhausted memory and SIGTERM; newer run 44871238615 must not be cancelled. Do not alter kernel or AOSP cache keys.

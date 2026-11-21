@@ -1,0 +1,32 @@
+name: Andarium Red - clear old unresponsive runner
+on:
+  push:
+    branches: [feature/andd-memory-tuning]
+    paths:
+      - 'build-requests/force-cancel-old-44860535715.txt'
+permissions:
+  contents: read
+  actions: write
+jobs:
+  clear-old-only:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - name: Force-cancel only the prior terminated host job if still not completed
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          run=44860535715
+          repo_api="repos/$GH_REPO/actions/runs/$run"
+          state="$(gh api "$repo_api" --jq .status)"
+          rev="$(gh api "$repo_api" --jq .head_sha)"
+          test "$rev" = 1ce856b693f6654e94aa6c3f92bb971e968f911f
+          if [[ "$state" == completed ]]; then
+            echo 'Old run already complete, no cancellation necessary' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          gh api -X POST "$repo_api/force-cancel"
+          echo 'Force-cancel requested only for old run #44860535715; saved caches untouched' >> "$GITHUB_STEP_SUMMARY"
