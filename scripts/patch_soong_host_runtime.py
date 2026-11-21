@@ -14,10 +14,10 @@ TARGET_IMPORT = '\t"runtime"\n\t"runtime/debug"\n'
 SOURCE_MAIN = "func main() {\n\tflag.Parse()\n"
 TARGET_MAIN = """func main() {
     // Build-host-only memory controls. Ninja env -i otherwise drops GOMEMLIMIT.
-    debug.SetMemoryLimit(6 * 1024 * 1024 * 1024)
-    debug.SetGCPercent(10)
+    debug.SetMemoryLimit(4608 * 1024 * 1024)
+    debug.SetGCPercent(8)
     runtime.GOMAXPROCS(1)
-    fmt.Fprintln(os.Stderr, "ANDARIUM_SOONG_RUNTIME_LIMIT_ACTIVE: GoLimit=6GiB GOGC=10 GOMAXPROCS=1")
+    fmt.Fprintln(os.Stderr, "ANDARIUM_SOONG_RUNTIME_LIMIT_ACTIVE: GoLimit=4.5GiB GOGC=8 GOMAXPROCS=1")
     flag.Parse()
 """
 
@@ -51,7 +51,7 @@ def main():
             "Pinned Soong commit: " + git(repo, "rev-parse", "HEAD").stdout.decode().strip()
             + "\nOriginal SHA256: " + hashlib.sha256(original).hexdigest()
             + "\nInstrumentation SHA256: " + hashlib.sha256(patched_text.encode()).hexdigest()
-            + "\nHost-only runtime limits: Go 6GiB, GC 10%, GOMAXPROCS=1\n",
+            + "\nHost-only runtime limits: Go 4.5GiB, GC 8%, GOMAXPROCS=1\n",
             encoding="utf-8")
         print("ANDARIUM_SOONG_HOST_SOURCE_INSTRUMENTED")
         print(opts.audit.read_text(encoding="utf-8"))

@@ -96,6 +96,10 @@ jobs:
           retention-days: 14
 
   github-hosted-genuine-red-guest:
+    permissions:
+      contents: read
+      actions: read
+      checks: write
     # Deliberately opt-in. Never run on an unverified 14GB disk or for a probe.
     if: github.ref == 'refs/heads/feature/andd-memory-tuning' && github.event_name == 'push' && contains(github.event.head_commit.message, '[github-hosted]')
     runs-on: ubuntu-24.04
@@ -279,10 +283,15 @@ jobs:
         shell: bash
         env:
           MALLOC_ARENA_MAX: '2'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           mkdir -p diagnostics
           echo "SOONG_MEMORY_POLICY: enable audited in-process host Go runtime caps after verified source checks"
+          # External neutral check snapshots survive sudden hosted runner loss.
+          # The previous run lost its normal job log and failed to upload the
+          # final artifact; telemetry must be written DURING the compile step.
+          python3 -B scripts/android17_build_telemetry.py start || true
           python3 -B scripts/test_soong_host_runtime_patch.py
           export GIT_CONFIG_NOSYSTEM=1
           export GIT_CONFIG_GLOBAL="$PWD/.build/clean-gitconfig"
@@ -291,6 +300,7 @@ jobs:
           # Keep telemetry in the active job log; post-failure steps may be
           # skipped if the hosted runner itself receives a shutdown signal.
           monitor() {
+            local count=0
             while true; do
               {
                 echo "ANDROID17_RESOURCE_SAMPLE=$(date -u +%FT%TZ)"
@@ -304,6 +314,10 @@ jobs:
                   echo "CGROUP_MEMORY_BYTES=$(cat /sys/fs/cgroup/memory.current)"
                 fi
               } | tee -a diagnostics/resource-samples.log
+              count=$((count+1))
+              if (( count % 3 == 0 )); then
+                python3 -B scripts/android17_build_telemetry.py update >/dev/null 2>&1 || true
+              fi
               sleep 45
             done
           }
@@ -321,6 +335,7 @@ jobs:
           tail -c 16000000 diagnostics/andarium-build-complete.log > diagnostics/andarium-build-last-16mb.log
           rm -f -- diagnostics/andarium-build-complete.log
           echo "ANDROID17_COMPILER_EXIT_CODE=$code" | tee -a diagnostics/compile-result.txt
+          python3 -B scripts/android17_build_telemetry.py finish >/dev/null 2>&1 || true
           if (( code != 0 )); then
             echo "::error::Android 17 compilation exited $code; inspect andarium-android17-diagnostics artifact."
             exit "$code"

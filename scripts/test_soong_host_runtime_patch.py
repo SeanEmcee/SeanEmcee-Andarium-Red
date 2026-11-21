@@ -21,8 +21,8 @@ with tempfile.TemporaryDirectory() as temp:
     original = main.read_bytes()
     cmd(sys.executable, str(patcher), "apply", "--workspace", str(root), "--audit", str(root/"audit.txt"))
     current = main.read_text()
-    assert "debug.SetMemoryLimit(6 * 1024 * 1024 * 1024)" in current
-    assert "debug.SetGCPercent(10)" in current
+    assert "debug.SetMemoryLimit(4608 * 1024 * 1024)" in current
+    assert "debug.SetGCPercent(8)" in current
     assert "runtime.GOMAXPROCS(1)" in current
     assert (root/"audit.txt").is_file()
     if subprocess.run(["which", "go"], capture_output=True).returncode == 0:

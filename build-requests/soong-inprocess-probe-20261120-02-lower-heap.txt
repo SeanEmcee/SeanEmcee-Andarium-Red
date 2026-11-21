@@ -1,0 +1,1 @@
+Low-cost Go host compiler fixture: verify adjusted 4.5 GiB Go soft memory limit, GOGC 8, real host process marker, and exact restoration of pinned Soong source after build. No Android checkout or build.
