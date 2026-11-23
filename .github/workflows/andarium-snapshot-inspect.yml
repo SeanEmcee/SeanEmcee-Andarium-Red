@@ -111,5 +111,5 @@ jobs:
           except Exception as ex:
               print("SANDBOX_INSPECTION_ERROR", type(ex).__name__, str(ex)[:1000], flush=True)
 
-          print("READ_ONLY_DIAGNOSTIC_DONE", flush=True)
+          print("READ_ONLY_DIAGNOSTIC_AFTER_CANCELLATION", flush=True)
           PY
