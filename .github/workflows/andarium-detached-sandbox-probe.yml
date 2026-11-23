@@ -1,0 +1,54 @@
+name: Andarium Detached Sandbox Lifetime Probe
+
+on:
+  push:
+    paths:
+      - '.github/workflows/andarium-detached-sandbox-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  persistent-sandbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+      MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+      MODAL_IMAGE_BUILDER_VERSION: '2025.06'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -q modal==1.6.4
+      - name: Verify probe syntax
+        run: python -m py_compile tools/andarium_snapshot_recovery.py
+      - name: Launch small Sandbox in detached Modal App
+        shell: bash
+        run: |
+          set -eo pipefail
+          modal run --detach tools/andarium_snapshot_recovery.py::detached_app_persistence_probe | tee /tmp/modal-persistence-probe.log
+          sb=$(sed -n 's/.*PERSISTENCE_PROBE_SANDBOX_ID \(sb-[A-Za-z0-9]*\).*/\1/p' /tmp/modal-persistence-probe.log | tail -1)
+          test -n "$sb"
+          echo "SMOKE_ID=$sb" >> "$GITHUB_ENV"
+      - name: Check Sandbox survived CLI and App detachment
+        shell: bash
+        run: |
+          sleep 10
+          python - <<'PY'
+          import os, modal
+          sid=os.environ['SMOKE_ID']
+          sb=modal.Sandbox.from_id(sid)
+          code=sb.poll()
+          print("DETACHED_PROBE_ID",sid,flush=True)
+          print("DETACHED_PROBE_EXIT_CODE",code,flush=True)
+          if code is not None:
+              raise RuntimeError("Sandbox stopped after detached CLI exited")
+          p=sb.exec("sh","-c","printf persist-ok")
+          assert p.wait() == 0
+          print("DETACHED_MODAL_APP_SANDBOX_PERSISTED",flush=True)
+          sb.terminate()
+          print("PROBE_SANDBOX_CLEANUP_REQUESTED",flush=True)
+          PY
