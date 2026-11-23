@@ -52,22 +52,43 @@ CHECK
 echo "SOURCE_COPY_AND_PINS_VERIFIED $(date -u)"
 """
 
-@app.function(image=image, timeout=300, volumes={"/mnt/source": volume})
+@app.function(image=image, timeout=300)
 def snapshot_sdk_probe():
     import modal as active_modal
     import sys
     print("REMOTE_PYTHON", sys.version.split()[0], flush=True)
     print("REMOTE_MODAL", getattr(active_modal, "__version__", "unknown"), flush=True)
     assert hasattr(active_modal.Sandbox, "snapshot_directory")
-    sandbox = active_modal.Sandbox.create(
-        "true", app=app, image=image, cpu=1, memory=512, timeout=120
+
+    original = active_modal.Sandbox.create(
+        "sleep", "infinity", app=app, image=image,
+        cpu=1, memory=512, timeout=240
     )
+    restored = None
     try:
-        result = sandbox.wait()
-        assert result == 0, result
+        setup = original.exec(
+            "sh", "-c", "mkdir -p /snapshot-probe && printf 'andarium-ok' > /snapshot-probe/proof.txt"
+        )
+        assert setup.wait() == 0, "Sandbox setup command failed"
+        snapshot = original.snapshot_directory(
+            "/snapshot-probe", timeout=120, ttl=300
+        )
+        print("SMALL_DIRECTORY_SNAPSHOT_CREATED", snapshot.object_id, flush=True)
+        restored = active_modal.Sandbox.create(
+            "sleep", "infinity", app=app, image=image,
+            cpu=1, memory=512, timeout=180
+        )
+        restored.mount_image("/snapshot-probe", snapshot)
+        check = restored.exec(
+            "sh", "-c", "test \"$(cat /snapshot-probe/proof.txt)\" = andarium-ok"
+        )
+        assert check.wait() == 0, "Restored snapshot contents did not match"
+        print("SMALL_DIRECTORY_SNAPSHOT_RESTORED", flush=True)
         print("SNAPSHOT_SDK_AND_SANDBOX_PROBE_PASSED", flush=True)
     finally:
-        sandbox.terminate()
+        if restored is not None:
+            restored.terminate()
+        original.terminate()
 
 @app.function(image=image, timeout=84000, cpu=0.5, memory=512,
               volumes={"/mnt/source": volume})
