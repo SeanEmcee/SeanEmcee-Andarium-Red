@@ -98,6 +98,17 @@ def _inspect(sandbox):
     return p.wait() == 0
 
 
+@app.function(image=image, timeout=240)
+def detached_app_persistence_probe():
+    """Create a tiny Sandbox to test app detachment, with no Android copying."""
+    sb = modal.Sandbox.create(
+        "sleep", "infinity", app=app, image=image,
+        cpu=1, memory=512, timeout=600
+    )
+    print("PERSISTENCE_PROBE_SANDBOX_ID", sb.object_id, flush=True)
+    sb.detach()
+
+
 @app.function(image=image, timeout=480, volumes={"/mnt/source": volume})
 def start_snapshot_copy():
     """Start at most one cloud-side copy, then exit; no 25-minute GitHub dependency."""
