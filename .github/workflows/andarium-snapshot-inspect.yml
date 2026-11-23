@@ -1,0 +1,95 @@
+name: Andarium Snapshot Inspect (read only)
+on:
+  push:
+    paths:
+      - '.github/workflows/andarium-snapshot-inspect.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot-inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    env:
+      MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+      MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+      MODAL_IMAGE_BUILDER_VERSION: "2025.06"
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - name: Python and Modal setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Modal 1.6.4
+        run: python -m pip install -q modal==1.6.4
+      - name: Read existing Sandbox and source-copy status only
+        shell: bash
+        run: |
+          timeout 240s python - <<'PY'
+          import json
+          import modal
+          from datetime import datetime, timezone
+
+          print("INSPECTION_UTC", datetime.now(timezone.utc).isoformat(), flush=True)
+          vol = modal.Volume.from_name("andarium-red-cache")
+          for path in ["andarium-snapshot/sandbox.json",
+                       "andarium-snapshot/snapshot_created.json",
+                       "andarium-snapshot/snapshot_verified.json"]:
+              try:
+                  value = b"".join(vol.read_file(path)).decode("utf-8")
+                  print("VOLUME_STATE", path, value[:800], flush=True)
+              except Exception as ex:
+                  print("VOLUME_STATE_NOT_READABLE", path, type(ex).__name__,
+                        str(ex)[:300], flush=True)
+
+          sbid = "sb-01M82WE8WBT4W9NV41CE02YT9G"
+          try:
+              sb = modal.Sandbox.from_id(sbid)
+              status = sb.poll()
+              print("SOURCE_SANDBOX_ID", sbid, flush=True)
+              print("SOURCE_SANDBOX_EXIT_CODE", status, flush=True)
+              print("SOURCE_SANDBOX_ACTIVE", status is None, flush=True)
+              if status is None:
+                  p = sb.exec("python3", "-c", r"""
+          import os, pathlib
+          procs = []
+          for pid in os.listdir('/proc'):
+              if not pid.isdecimal():
+                  continue
+              try:
+                  cmd = pathlib.Path('/proc',pid,'cmdline').read_bytes().replace(b'\0', b' ')
+                  if b'rsync' in cmd or b'CHECK' in cmd or b'SOURCE_COPY' in cmd:
+                      procs.append((pid, cmd.decode(errors='replace')[:240]))
+              except (OSError, PermissionError):
+                  pass
+          print('COPY_RELATED_PROCESSES', repr(procs[:15]))
+          for p in ['/work/aosp17/.repo/manifest.xml',
+                    '/work/aosp17/external/zlib/.git',
+                    '/work/aosp17/vendor/lineage',
+                    '/mnt/source/andarium-snapshot/transfer.log']:
+              f=pathlib.Path(p)
+              try:
+                  st=f.stat()
+                  print('FILE_STATE', p,'size',st.st_size,'mtime',st.st_mtime)
+              except OSError as e:
+                  print('FILE_MISSING',p,str(e)[:150])
+          f=pathlib.Path('/mnt/source/andarium-snapshot/transfer.log')
+          try:
+              with f.open('rb') as h:
+                  h.seek(max(0,f.stat().st_size-3000))
+                  print('TRANSFER_LOG_TAIL_BEGIN')
+                  print(h.read().decode(errors='replace')[-3000:])
+                  print('TRANSFER_LOG_TAIL_END')
+          except Exception as e:
+              print('TRANSFER_LOG_READ_ERROR',repr(e))
+          """,timeout=80)
+                  print("SANDBOX_INSPECTION_STDOUT", p.stdout.read()[-8000:], flush=True)
+                  print("SANDBOX_INSPECTION_STDERR", p.stderr.read()[-3000:], flush=True)
+                  print("SANDBOX_INSPECTION_EXIT", p.wait(), flush=True)
+          except Exception as ex:
+              print("SANDBOX_INSPECTION_ERROR", type(ex).__name__, str(ex)[:1000], flush=True)
+
+          print("READ_ONLY_DIAGNOSTIC_DONE", flush=True)
+          PY
