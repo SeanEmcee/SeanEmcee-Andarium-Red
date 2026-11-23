@@ -53,7 +53,7 @@ jobs:
         run: modal run --detach tools/andarium_snapshot_recovery.py::start_snapshot_copy
       - name: Inspect current copy (manual)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.operation == 'status' }}
-        run: modal run tools/andarium_snapshot_recovery.py::inspect_snapshot_copy
+        run: python tools/andarium_snapshot_status_host.py
       - name: Finalize when source copy finishes (scheduled or manual)
         if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'finalize') }}
         run: modal run tools/andarium_snapshot_recovery.py::finalize_snapshot_copy
