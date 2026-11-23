@@ -67,7 +67,7 @@ jobs:
           print('COPY_RELATED_PROCESSES', repr(procs[:15]))
           marker=pathlib.Path('/work/.andarium-copy-verified')
           print('COPY_COMPLETE_MARKER_PRESENT', marker.is_file(), flush=True)
-          print('CURRENT_STATUS_PROBE', '2026-11-22T18:01-08:00', flush=True)
+          print('CURRENT_STATUS_PROBE', datetime.now(timezone.utc).isoformat(), flush=True)
           print('RSYNC_PROCESS_COUNT',sum(1 for pid,cmd in procs if cmd.startswith('rsync ')), flush=True)
           def snapshot_metrics():
               usage=os.statvfs('/work')
