@@ -54,6 +54,7 @@ jobs:
               if status is None:
                   p = sb.exec("python3", "-c", r"""
           import os, pathlib
+          from datetime import datetime, timezone
           procs = []
           for pid in os.listdir('/proc'):
               if not pid.isdecimal():
@@ -111,7 +112,9 @@ jobs:
           """,timeout=80)
                   print("SANDBOX_INSPECTION_STDOUT", p.stdout.read()[-8000:], flush=True)
                   print("SANDBOX_INSPECTION_STDERR", p.stderr.read()[-3000:], flush=True)
-                  print("SANDBOX_INSPECTION_EXIT", p.wait(), flush=True)
+                  code = p.wait()
+                  print("SANDBOX_INSPECTION_EXIT", code, flush=True)
+                  assert code == 0, "Sandbox inspection command failed"
           except Exception as ex:
               print("SANDBOX_INSPECTION_ERROR", type(ex).__name__, str(ex)[:1000], flush=True)
 
