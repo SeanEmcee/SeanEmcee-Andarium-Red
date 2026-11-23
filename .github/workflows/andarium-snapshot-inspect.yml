@@ -65,6 +65,9 @@ jobs:
               except (OSError, PermissionError):
                   pass
           print('COPY_RELATED_PROCESSES', repr(procs[:15]))
+          marker=pathlib.Path('/work/.andarium-copy-verified')
+          print('COPY_COMPLETE_MARKER_PRESENT', marker.is_file(), flush=True)
+          print('RSYNC_PROCESS_COUNT',sum(1 for pid,cmd in procs if cmd.startswith('rsync ')), flush=True)
           def snapshot_metrics():
               usage=os.statvfs('/work')
               used= (usage.f_blocks-usage.f_bfree)*usage.f_frsize
