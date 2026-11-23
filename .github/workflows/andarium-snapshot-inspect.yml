@@ -44,7 +44,7 @@ jobs:
                   print("VOLUME_STATE_NOT_READABLE", path, type(ex).__name__,
                         str(ex)[:300], flush=True)
 
-          sbid = "sb-01M82YT8SKY6087NMJNY1KD5YN"
+          sbid = json.loads(b"".join(vol.read_file("andarium-snapshot/sandbox.json")))["id"]
           try:
               sb = modal.Sandbox.from_id(sbid)
               status = sb.poll()
