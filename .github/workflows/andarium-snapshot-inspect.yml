@@ -65,6 +65,26 @@ jobs:
               except (OSError, PermissionError):
                   pass
           print('COPY_RELATED_PROCESSES', repr(procs[:15]))
+          def snapshot_metrics():
+              usage=os.statvfs('/work')
+              used= (usage.f_blocks-usage.f_bfree)*usage.f_frsize
+              io={}
+              for pid,cmd in procs:
+                  if not (cmd.startswith('rsync ') or cmd.endswith(' rsync')):
+                      continue
+                  try:
+                      vals={}
+                      for line in pathlib.Path('/proc',pid,'io').read_text().splitlines():
+                          k,v=line.split(':',1)
+                          vals[k]=int(v.strip())
+                      io[pid]={'rchar': vals.get('rchar',0), 'wchar': vals.get('wchar',0)}
+                  except (OSError,PermissionError):
+                      pass
+              return {'local_used_bytes':used,'rsync_io':io}
+          print('COPY_METRICS_START', repr(snapshot_metrics()), flush=True)
+          import time
+          time.sleep(12)
+          print('COPY_METRICS_AFTER_12S', repr(snapshot_metrics()), flush=True)
           for p in ['/work/aosp17/.repo/manifest.xml',
                     '/work/aosp17/external/zlib/.git',
                     '/work/aosp17/vendor/lineage',
