@@ -1,0 +1,59 @@
+name: Andarium Red Snapshot Recovery
+
+on:
+  push:
+    paths:
+      - '.github/workflows/andarium-snapshot-recovery.yml'
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: 'Start independent copy, inspect it, or finalize the snapshot'
+        type: choice
+        options:
+          - status
+          - start
+          - finalize
+        default: status
+  schedule:
+    - cron: '13,43 * * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: andarium-red-snapshot-recovery
+  cancel-in-progress: false
+
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+      MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+      MODAL_IMAGE_BUILDER_VERSION: '2025.06'
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Check existing Modal API credentials
+        run: |
+          if [[ -z "$MODAL_TOKEN_ID" || -z "$MODAL_TOKEN_SECRET" ]]; then
+            echo "::error::MODAL_TOKEN_ID or MODAL_TOKEN_SECRET was not configured"
+            exit 1
+          fi
+      - name: Install validated Modal SDK
+        run: python -m pip install -q modal==1.6.4
+      - name: Verify recovery source compiles
+        run: python -m py_compile tools/andarium_snapshot_recovery.py
+      - name: Start independent copy (push or manual)
+        if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'start') }}
+        run: modal run tools/andarium_snapshot_recovery.py::start_snapshot_copy
+      - name: Inspect current copy (manual)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.operation == 'status' }}
+        run: modal run tools/andarium_snapshot_recovery.py::inspect_snapshot_copy
+      - name: Finalize when source copy finishes (scheduled or manual)
+        if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.operation == 'finalize') }}
+        run: modal run tools/andarium_snapshot_recovery.py::finalize_snapshot_copy
