@@ -44,7 +44,7 @@ jobs:
                   print("VOLUME_STATE_NOT_READABLE", path, type(ex).__name__,
                         str(ex)[:300], flush=True)
 
-          sbid = "sb-01M82YNAX3QBGCE146K936K42G"
+          sbid = "sb-01M82YT8SKY6087NMJNY1KD5YN"
           try:
               sb = modal.Sandbox.from_id(sbid)
               status = sb.poll()
