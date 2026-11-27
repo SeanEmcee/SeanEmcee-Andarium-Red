@@ -1,0 +1,62 @@
+name: Andarium Red - Modal build readiness (read only)
+on:
+  push:
+    branches: [build/modal-android17-readiness]
+    paths: ['.github/workflows/andarium-modal-build-readiness.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: andarium-modal-build-readiness
+  cancel-in-progress: false
+jobs:
+  readiness:
+    if: github.ref == 'refs/heads/build/modal-android17-readiness'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Check original Android producer contract
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor 9c8ef6179fc2eac39b206f6afdd2beff350aa999 HEAD
+          git diff --exit-code 9c8ef6179fc2eac39b206f6afdd2beff350aa999 HEAD -- scripts tests integrate_andarium.py
+          bash -n scripts/build_red_android17_proof.sh
+          bash -n scripts/andarium_persistent_build.sh
+          python3 tests/test_persistent_android17_workflow.py
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -q modal==1.6.4
+      - name: Check verified snapshot identity and billing API without allocating Modal compute
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+        run: |
+          python - <<'PY'
+          import json
+          import modal
+
+          expected = 'im-01M83T5HTZS15J4ARK4DE1JYMA'
+          vol = modal.Volume.from_name('andarium-red-cache')
+          def read_state(name):
+              return json.loads(b''.join(vol.read_file('andarium-snapshot/' + name)))
+          created = read_state('snapshot_created.json')
+          verified = read_state('snapshot_verified.json')
+          if (created.get('image_id') != expected or verified.get('image_id') != expected
+                  or verified.get('manifest_projects_verified_before_snapshot') != 1239
+                  or verified.get('restore_sample_verified') != 'external/zlib'):
+              raise SystemExit('SNAPSHOT_IDENTITY_OR_VERIFICATION_MISMATCH')
+          modal.Image.from_id(expected).hydrate()
+          print('VERIFIED_SNAPSHOT_METADATA_REACHABLE')
+          try:
+              modal.Workspace.from_context().billing.summary()
+          except Exception as exc:
+              print('BILLING_API_UNAVAILABLE=' + type(exc).__name__)
+          else:
+              print('BILLING_API_REACHABLE; private balances omitted')
+          print('COMPILATION_NOT_STARTED: confirm zero-out-of-pocket usage limit and writable builder')
+          PY
